@@ -43,6 +43,12 @@ input.addListener("data", function (d) {
 
 });
 
+function gameFinder() {
+
+}
+
+
+
 function printUser() {
     if (site === undefined) {
         console.log("site not set");
