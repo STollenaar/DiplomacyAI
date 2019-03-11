@@ -5,5 +5,16 @@
   "main": "server.js",
   "author": {
     "name": ""
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.2",
+    "cheerio-tableparser": "^1.0.1",
+    "discord.io": "https://github.com/woor/discord.io/tarball/gateway_v6",
+    "discord.js": "^11.4.2",
+    "fs": "0.0.1-security",
+    "request": "^2.88.0",
+    "sqlite3": "^4.0.6",
+    "superagent": "^4.1.0",
+    "winston": "^3.2.1"
   }
 }
