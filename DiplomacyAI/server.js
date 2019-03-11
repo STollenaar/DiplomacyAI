@@ -28,6 +28,7 @@ input.addListener("data", function (d) {
             });
             break;
         case "logout":
+            //logout
             const $ = cheerio.load(site);
             request.get(`${url}logon.php?logoff=on`).then(function (response) {
                 site = response.text;
@@ -35,6 +36,7 @@ input.addListener("data", function (d) {
             });
             break;
         case "user":
+            //debugs prints the current logged in user
             printUser();
             break;
     }
