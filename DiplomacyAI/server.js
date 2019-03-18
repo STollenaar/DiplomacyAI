@@ -1,10 +1,16 @@
+const url = 'https://webdiplomacy.net/';
+
 const cheerio = require('cheerio');
 const request = require('superagent');
 const database = require('./database');
-const url = 'https://webdiplomacy.net/';
+const state = require('./state');
+let agent = request.agent();
+state.init(url, agent, cheerio);
+
+
 const smallId = '2360';
 const bigId = '236023';
-let agent = request.agent();
+
 let userID = 0;
 let input = process.openStdin();
 
@@ -21,7 +27,7 @@ input.addListener("data", function (d) {
         case "addUser":
             //adds a user to the db
             database.addUser(d[1], d[2]);
-            login;
+            login();
             break;
         case "login":
             //login in
@@ -33,6 +39,7 @@ input.addListener("data", function (d) {
                 const $ = cheerio.load(site);
                 agent.get(`${url}logon.php?logoff=on`).then(function (response) {
                     site = response.text;
+                    state.updateSite(site);
                     printUser();
                 });
             }
@@ -42,44 +49,28 @@ input.addListener("data", function (d) {
             printUser();
             break;
         case "state":
-            turl = `${url}/cache/games/${smallId}/${bigId}`;
-            let states = [];
-            request.get(turl).then(function (response) {
-                const $ = cheerio.load(response.text);
-                $('a').each(function () {
-                    if ($(this).text().includes('json')) {
-                        states.push($(this).text());
-                    }
-                });
-                console.log(states);
-            });
+            //turl = `${url}/cache/games/${smallId}/${bigId}`;
+            //let states = [];
+            //request.get(turl).then(function (response) {
+            //    const $ = cheerio.load(response.text);
+            //    $('a').each(function () {
+            //        if ($(this).text().includes('json')) {
+            //            states.push($(this).text());
+            //        }
+            //    });
+            //    console.log(states);
+            //});
 
+
+            state.stateParser(d[1], d[2], d[3]);
             break;
     }
 
 });
 
-function gameFinder() {
-    //site is set to the profile page
-    let $ = cheerio.load(site);
-    let games = [];
-    //going to loop over every game you are in
-    $('div.enterBarOpen a').each(function () {
-        let game = {};
-        //gets the main id needed from each game from the open link
-        game.bigId = $(this).attr('href').split('=')[1].split('#')[0];
-        //quick navigation to that game
-        agent.get(`${url}board.php?gameID=${game.bigId}#gamePanel`).then(function (r) {
-            const $2 = cheerio.load(r.text); //just loads that game page into cheerio
-            game.smallId = $2('#mapImage').attr('src').split('/')[2]; //get the small id from the image src
-            console.log(game);
-            games.push(game);//adding to the list
-        });
-    });
-    console.log(games);
-}
 
-function login(game) {
+
+function login() {
     database.getUser(function (r) {
         agent.post(`${url}logon.php`).type('form').send({ loginuser: r.username }).send({ loginpass: r.password }).then(function (response) {
             const $ = cheerio.load(response.text);
@@ -87,8 +78,9 @@ function login(game) {
             //navigates to the user profile
             agent.get(`${url}profile.php?userID=${userID}`).then(function (r) {
                 site = r.text;
+                state.updateSite(site);
                 printUser();
-                gameFinder();
+                state.gameFinder();
             });
         });
     });
