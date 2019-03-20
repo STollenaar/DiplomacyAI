@@ -21,9 +21,31 @@ module.exports = {
         agent.get(turl).then(function (response) {
             const $ = cheerio.load(response.text);
             let units = JSON.parse(response.text.split(' ')[4].split('(')[1].split(')')[0]);
-            let terr = JSON.parse(response.text.split(' ')[6].split(';')[0]);
+            let terrs = JSON.parse(response.text.split(' ')[6].split(';')[0]);
 
-            info = { units, terr };
+            //making custom object map
+            let unitMap = new Map();
+            for (let u in units) {
+                let unit = {};
+                unit.countryID = units[u].countryID;
+                unit.type = units[u].type;
+                unit.terrID = units[u].terrID;
+                unitMap.set(u, unit);
+            }
+
+            let terrMap = new Map();
+            for (let t in terrs) {
+                t = terrs[t];
+                let terr = {};
+                terr.standoff = t.standoff;
+                terr.occupiedFromTerrID = t.occupiedFromTerrID;
+                terr.unitID = t.unitID;
+                terr.ownerCountryID = t.ownerCountryID;
+                terrMap.set(t.id, terr);
+            }
+
+            info = { unitMap, terrMap };
+            console.log(unitMapS);
 
         });
     },
@@ -41,10 +63,8 @@ module.exports = {
             agent.get(`${url}board.php?gameID=${game.bigId}#gamePanel`).then(function (r) {
                 const $2 = cheerio.load(r.text); //just loads that game page into cheerio
                 game.smallId = $2('#mapImage').attr('src').split('/')[2]; //get the small id from the image src
-                console.log(game);
                 games.push(game);//adding to the list
             });
         });
-        console.log(games);
     }
 };
