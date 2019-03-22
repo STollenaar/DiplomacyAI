@@ -28,5 +28,16 @@ module.exports = {
                 callback(rows);
             });
         });
+    },
+
+    defaultConfig(fs, callback) {
+        db.serialize(function () {
+            db.get(`SELECT * FROM config;`, (err, rows) => {
+                let object = [];
+                object.push({ 'Username': rows.Username, 'Password': rows.Pw });
+                let json = JSON.stringify(object);
+                fs.writeFile('./config.json', json, 'utf8', callback);
+            });
+        });
     }
 };

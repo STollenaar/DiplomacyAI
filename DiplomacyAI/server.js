@@ -1,9 +1,22 @@
 const url = 'https://webdiplomacy.net/';
 
+const fs = require('fs');
 const cheerio = require('cheerio');
 const request = require('superagent');
 const database = require('./database');
 const state = require('./state');
+
+let config;
+
+if (!fs.exists('./config.json')) {
+    console.log("Deploying config");
+    database.defaultConfig(fs, function () {
+        config = require('./config.json');
+    });
+} else {
+    config = require('./config.json');
+}
+
 let agent = request.agent();
 state.init(url, agent, cheerio);
 
