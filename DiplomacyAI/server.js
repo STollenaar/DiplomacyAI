@@ -6,19 +6,28 @@ const request = require('superagent');
 const database = require('./database');
 const state = require('./state');
 
+const move = require('./move');
+
 let config;
 
-if (!fs.exists('./config.json')) {
-    console.log("Deploying config");
-    database.defaultConfig(fs, function () {
+
+fs.stat('./config.json', function (err, stat) {
+    if (err === null) {
         config = require('./config.json');
-    });
-} else {
-    config = require('./config.json');
-}
+        login();
+    } else if (err.code === 'ENOENT') {
+        console.log("Deploying config");
+        database.defaultConfig(fs, function () {
+            config = require('./config.json');
+        });
+    }
+
+});
+
 
 let agent = request.agent();
-state.init(url, agent, cheerio);
+move.init(url, agent, cheerio);
+state.init(url, agent, cheerio, move);
 
 
 const smallId = '2360';
@@ -77,6 +86,10 @@ input.addListener("data", function (d) {
 
             state.stateParser(d[1], d[2], d[3]);
             break;
+
+        case "checkMove":
+            move.canMakeMoves();
+            break;
     }
 
 });
@@ -84,17 +97,18 @@ input.addListener("data", function (d) {
 
 
 function login() {
-    agent.post(`${url}logon.php`).type('form').send({ loginuser: config.Username }).send({ loginpass: config.Password }).then(function (response) {
-            const $ = cheerio.load(response.text);
-            userID = $('div #header-welcome a').attr('href').split('=')[1];
-            //navigates to the user profile
-            agent.get(`${url}profile.php?userID=${userID}`).then(function (r) {
-                site = r.text;
-                state.updateSite(site);
-                printUser();
-                state.gameFinder();
-            });
+    agent.post(`${url}logon.php`).type('form').send({ loginuser: config[0].Username }).send({ loginpass: config[0].Password }).then(function (response) {
+        const $ = cheerio.load(response.text);
+        userID = $('div #header-welcome a').attr('href').split('=')[1];
+        //navigates to the user profile
+        agent.get(`${url}profile.php?userID=${userID}`).then(async function (r) {
+            site = r.text;
+            state.updateSite(site);
+            move.updateGames(site);
+            printUser();
+            state.gameFinder();
         });
+    });
 }
 
 
