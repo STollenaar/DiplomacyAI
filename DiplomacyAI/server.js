@@ -38,8 +38,8 @@ input.addListener("data", function (d) {
 
     switch (d[0]) {
         case "addUser":
-            //adds a user to the db
-            database.addUser(d[1], d[2]);
+            //adds a user to the config
+            database.addUser(d[1], d[2], fs);
             login();
             break;
         case "login":
@@ -84,8 +84,7 @@ input.addListener("data", function (d) {
 
 
 function login() {
-    database.getUser(function (r) {
-        agent.post(`${url}logon.php`).type('form').send({ loginuser: r.username }).send({ loginpass: r.password }).then(function (response) {
+    agent.post(`${url}logon.php`).type('form').send({ loginuser: config.Username }).send({ loginpass: config.Password }).then(function (response) {
             const $ = cheerio.load(response.text);
             userID = $('div #header-welcome a').attr('href').split('=')[1];
             //navigates to the user profile
@@ -96,7 +95,6 @@ function login() {
                 state.gameFinder();
             });
         });
-    });
 }
 
 
