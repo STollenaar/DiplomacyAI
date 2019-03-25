@@ -39,20 +39,16 @@ module.exports = {
         );
 
 
-        const browser = await puppeteer.launch({ headless: false });
+        const browser = await puppeteer.launch();
         const page = await browser.newPage();
-        await page.setViewport({ width: 1200, height: 720 });
 
         for (let cookies in agent.jar.getCookies(access)) {
             cookies = agent.jar.getCookies(access)[cookies];
             if (cookies !== undefined && cookies.value !== undefined) {
                 cookies.url = url;
-                //cookies.domain = url;
                 await page.setCookie(cookies);
             }
         }
-
-
         await page.goto(`${url}board.php?gameID=${gameId}`, { "waitUntil": "load" }).then(async function () {
 
             const html = await page.content();
