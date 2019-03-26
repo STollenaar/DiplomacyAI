@@ -98,5 +98,8 @@ module.exports = {
         console.log(button);
         button.click();
 
+        //agent.post(`${url}board.php?gameID=${gameID}`).type('form').then(function (response) {
+        //    console.log("tried post");
+        //});
     }
 };
