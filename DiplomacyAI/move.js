@@ -53,7 +53,7 @@ module.exports = {
 
             const html = await page.content();
             const $ = cheerio.load(html);
-            if ($('div.memberUserDetail').text().includes('No orders submitted!')) {
+            if ($('div.memberUserDetail').text().includes('No orders submitted!') || $('div.memberUserDetail').text().includes('but not ready for next turn')) {
                 module.exports.makeRandomMove(html, gameId);
             }
         });
@@ -71,32 +71,32 @@ module.exports = {
 
     makeRandomMove(site, gameID) {
         const $ = cheerio.load(site);
-
-        $('table.orders tr').each(function () {
+        $('table.orders td[class="order"]').each(function () {
             let tr = $(this);
+            tr.children('div').children('span[class="orderSegment type"]').children('select').children('option[selected="selected"]').removeAttr('selected');
+            const order = Math.floor(Math.random() * Math.floor(3));
 
-            tr.children('div').children('span.orderSegment type').children('select').value = Math.random() * (+3 - +0) + +0;
+            tr.children('div').children('span[class="orderSegment type"]').children('select').children().eq(order).attr('selected', 'selected');
+            console.log(tr.children('div').children('span[class="orderSegment type"]').children('select').children().eq(order).text());
 
-            switch (tr.children('div').children('span.orderSegment type').children('select').value) {
+            switch (tr.children('div').children('span[class="orderSegment type"]').children('select').children('option[selected="selected"]').index()) {
 
                 case 1:
-                    tr.children('div').children('span.orderSegment toTerrID').children('select').value = Math.random() * (+tr.children('div').children('span.orderSegment toTerrID').children('select').length - +0) + +0;
+                    tr.children('div').children('span[class="orderSegment toTerrID"]').children('select').children().eq(Math.floor(Math.random() * Math.floor(tr.children('div').children('span[class="orderSegment toTerrID"]').children('select').length))).attr('selected', 'selected');
                     break;
                 case 2:
-                    tr.children('div').children('span.orderSegment toTerrID').children('select').value = Math.random() * (+tr.children('div').children('span.orderSegment toTerrID').children('select').length - +0) + +0;
+                    tr.children('div').children('span[class="orderSegment toTerrID"]').children('select').children().eq(Math.floor(Math.random() * Math.floor(tr.children('div').children('span[class="orderSegment toTerrID"]').children('select').length))).attr('selected', 'selected');
                     break;
                 case 3:
-                    tr.children('div').children('span.orderSegment toTerrID').children('select').value = Math.random() * (+tr.children('div').children('span.orderSegment toTerrID').children('select').length - +0) + +0;
-                    tr.children('div').children('span.orderSegment fromTerrID').children('select').value = Math.random() * (+tr.children('div').children('span.orderSegment fromTerrID').children('select').length - +0) + +0;
+                    tr.children('div').children('span[class="orderSegment toTerrID"]').children('select').children().eq(Math.floor(Math.random() * Math.floor(tr.children('div').children('span[class="orderSegment toTerrID"]').children('select').length))).attr('selected', 'selected');
+                    tr.children('div').children('span[class="orderSegment fromTerrID"]').children('select').children().eq(Math.floor(Math.random() * Math.floor(tr.children('div').children('span[class="orderSegment fromTerrID"]').children('select').length))).attr('selected', 'selected');
                     break;
             }
 
         });
-        console.log(site);
-
-        agent.post(`${url}board.php?gameID=${gameID}`).type('form').then(function (response) {
-            console.log("tried post");
-        });
+        const button = $('input[name="Ready"]');
+        console.log(button);
+        button.click();
 
     }
 };
