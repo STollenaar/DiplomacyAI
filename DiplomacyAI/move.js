@@ -39,7 +39,7 @@ module.exports = {
         );
 
 
-        const browser = await puppeteer.launch();
+        const browser = await puppeteer.launch({ headless: false });
         const page = await browser.newPage();
 
         for (let cookies in agent.jar.getCookies(access)) {
@@ -54,53 +54,95 @@ module.exports = {
             const html = await page.content();
             const $ = cheerio.load(html);
             if ($('div.memberUserDetail').text().includes('No orders submitted!') || $('div.memberUserDetail').text().includes('but not ready for next turn')) {
-                module.exports.makeRandomMove(html, gameId);
+                await module.exports.makeRandomMove(html, gameId, browser, page);
             }
+            // await page.close();
         });
 
         //await browser.close();
 
-
-        //await Promise.all([
-        //    page.click('#loginSubmit'),
-        //    page.waitForNavigation(),
-        //]);
-
-        
     },
 
-    makeRandomMove(site, gameID) {
+    async makeRandomMove(site, gameId, browser, page) {
         const $ = cheerio.load(site);
-        $('table.orders td[class="order"]').each(function () {
+        $('table.orders td[class="order"]').each(async function () {
             let tr = $(this);
-            tr.children('div').children('span[class="orderSegment type"]').children('select').children('option[selected="selected"]').removeAttr('selected');
-            const order = Math.floor(Math.random() * Math.floor(3));
+            //removes the default selected option
+            const id = tr.children('div').attr('id');
+            let loop1 = true;
+            //random order
+            while (loop1) {
+                const order = Math.floor(Math.random() * Math.floor(4));
+                if (order === 0) {
+                    loop1 = false;
+                    continue;
+                }
 
-            tr.children('div').children('span[class="orderSegment type"]').children('select').children().eq(order).attr('selected', 'selected');
-            console.log(tr.children('div').children('span[class="orderSegment type"]').children('select').children().eq(order).text());
+                console.log(tr.children('div').children('span[class="orderSegment type"]').children('select').children().eq(order).attr('value'));
+                await page.select(`div#${id} select[ordertype="type"]`, tr.children('div').children('span[class="orderSegment type"]').children('select').children().eq(order).attr('value'));
 
-            switch (tr.children('div').children('span[class="orderSegment type"]').children('select').children('option[selected="selected"]').index()) {
+                if (await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.length) === 1 && await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.children[0].innerHTML) === "") {
+                    continue;
+                }
+                loop1 = false;
+                loop2 = true;
+                while (loop2) {
+                    //setting the orders correctly
+                    switch (order) {
 
-                case 1:
-                    tr.children('div').children('span[class="orderSegment toTerrID"]').children('select').children().eq(Math.floor(Math.random() * Math.floor(tr.children('div').children('span[class="orderSegment toTerrID"]').children('select').length))).attr('selected', 'selected');
-                    break;
-                case 2:
-                    tr.children('div').children('span[class="orderSegment toTerrID"]').children('select').children().eq(Math.floor(Math.random() * Math.floor(tr.children('div').children('span[class="orderSegment toTerrID"]').children('select').length))).attr('selected', 'selected');
-                    break;
-                case 3:
-                    tr.children('div').children('span[class="orderSegment toTerrID"]').children('select').children().eq(Math.floor(Math.random() * Math.floor(tr.children('div').children('span[class="orderSegment toTerrID"]').children('select').length))).attr('selected', 'selected');
-                    tr.children('div').children('span[class="orderSegment fromTerrID"]').children('select').children().eq(Math.floor(Math.random() * Math.floor(tr.children('div').children('span[class="orderSegment fromTerrID"]').children('select').length))).attr('selected', 'selected');
-                    break;
+                        case 1:
+                        case 2:
+                            {
+                                //get a valid to value
+                                const to = Math.floor(Math.random() * Math.floor(await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.length))) + 1;
+                                console.log(`order: ${order}, to: ${to}`);
+                                if (await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.children[0].innerHTML) === "") {
+                                    loop2 = false;
+                                    await page.select(`div#${id} select[class="orderSegment toTerrID"]`, await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, (e, to) => e.children[to].value, to));
+                                }
+                                break;
+                            }
+                        case 3:
+                            {
+                                //valid to value
+                                const to = Math.floor(Math.random() * Math.floor(await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.length))) + 1;
+                                console.log(`order: ${order}, to: ${to}`);
+                                if (await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.children[0].innerHTML) === "") {
+                                    loop2 = false;
+                                    await page.select(`div#${id} select[class="orderSegment toTerrID"]`, await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, (e, to) => e.children[to].value,to));
+
+                                    loop3 = true;
+                                    //trying to get a valid from value and checking if the to value was good enough
+                                    while (loop3) {
+                                        const from = Math.floor(Math.random() * Math.floor(await page.$eval(`div#${id} span[class="orderSegment fromTerrID"] select`, e=> e.length))) + 1;
+                                        console.log(`order support move from: ${from}`);
+                                        if (await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.length) === 1 && await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.children[0].innerHTML) === "") {
+                                            loop2 = true;
+                                            break;
+                                        }
+
+                                        if (await page.$eval(`div#${id} span[class="orderSegment fromTerrID"] select`, e => e.children[0].innerHTML) === "") {
+                                            await page.select(`div#${id} select[class="orderSegment fromTerrID"]`, await page.$eval(`div#${id} span[class="orderSegment fromTerrID"] select`, (e, from) => e.children[from].value, from));
+                                            break;
+                                        }
+
+                                    }
+                                }
+                                break;
+                            }
+                    }
+                }
             }
 
         });
-        //const button = $('input[name="Ready"]');
-        //console.log(button);
-        //button.click();
 
-        agent.post(`${url}board.php?gameID=${gameID}#orders`).type('form').then(function (response) {
-            console.log("tried post");
-        });
+        //readying up
+        //await page.$eval('input[name="Ready"]', b =>b.click());
+
+
+
+
+
 
     }
 };
