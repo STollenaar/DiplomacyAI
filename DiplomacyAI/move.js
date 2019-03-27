@@ -94,12 +94,13 @@ module.exports = {
             }
 
         });
-        const button = $('input[name="Ready"]');
-        console.log(button);
-        button.click();
+        //const button = $('input[name="Ready"]');
+        //console.log(button);
+        //button.click();
 
-        //agent.post(`${url}board.php?gameID=${gameID}`).type('form').then(function (response) {
-        //    console.log("tried post");
-        //});
+        agent.post(`${url}board.php?gameID=${gameID}#orders`).type('form').then(function (response) {
+            console.log("tried post");
+        });
+
     }
 };
