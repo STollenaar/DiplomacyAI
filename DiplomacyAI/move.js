@@ -81,7 +81,6 @@ module.exports = {
                 console.log(tr.children('div').children('span[class="orderSegment type"]').children('select').children().eq(order).attr('value'));
                 await page.select(`div#${id} select[ordertype="type"]`, tr.children('div').children('span[class="orderSegment type"]').children('select').children().eq(order).attr('value'));
 
-
                 if (await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.length) === 1 && await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.children[0].innerHTML) === "") {
                     continue;
                 } else {
@@ -136,14 +135,7 @@ module.exports = {
             }
 
         });
-
         //readying up
         await page.$eval('input[name="Ready"]', b =>b.click());
-
-
-
-
-
-
     }
 };
