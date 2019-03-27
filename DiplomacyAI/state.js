@@ -52,6 +52,7 @@ module.exports = {
         });
     },
 
+
     gameFinder() {
         //site is set to the profile page
         let $ = cheerio.load(site);
