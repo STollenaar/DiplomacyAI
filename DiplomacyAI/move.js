@@ -39,7 +39,7 @@ module.exports = {
         );
 
 
-        const browser = await puppeteer.launch({ headless: false });
+        const browser = await puppeteer.launch();
         const page = await browser.newPage();
 
         for (let cookies in agent.jar.getCookies(access)) {
@@ -56,10 +56,10 @@ module.exports = {
             if ($('div.memberUserDetail').text().includes('No orders submitted!') || $('div.memberUserDetail').text().includes('but not ready for next turn')) {
                 await module.exports.makeRandomMove(html, gameId, browser, page);
             }
-            // await page.close();
+             await page.close();
         });
 
-        //await browser.close();
+        await browser.close();
 
     },
 
@@ -81,55 +81,56 @@ module.exports = {
                 console.log(tr.children('div').children('span[class="orderSegment type"]').children('select').children().eq(order).attr('value'));
                 await page.select(`div#${id} select[ordertype="type"]`, tr.children('div').children('span[class="orderSegment type"]').children('select').children().eq(order).attr('value'));
 
+
                 if (await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.length) === 1 && await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.children[0].innerHTML) === "") {
                     continue;
-                }
-                loop1 = false;
-                loop2 = true;
-                while (loop2) {
-                    //setting the orders correctly
-                    switch (order) {
+                } else {
+                    loop1 = false;
+                    loop2 = true;
+                    while (loop2) {
+                        //setting the orders correctly
+                        switch (order) {
 
-                        case 1:
-                        case 2:
-                            {
-                                //get a valid to value
-                                const to = Math.floor(Math.random() * Math.floor(await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.length))) + 1;
-                                console.log(`order: ${order}, to: ${to}`);
-                                if (await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.children[0].innerHTML) === "") {
-                                    loop2 = false;
-                                    await page.select(`div#${id} select[class="orderSegment toTerrID"]`, await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, (e, to) => e.children[to].value, to));
-                                }
-                                break;
-                            }
-                        case 3:
-                            {
-                                //valid to value
-                                const to = Math.floor(Math.random() * Math.floor(await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.length))) + 1;
-                                console.log(`order: ${order}, to: ${to}`);
-                                if (await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.children[0].innerHTML) === "") {
-                                    loop2 = false;
-                                    await page.select(`div#${id} select[class="orderSegment toTerrID"]`, await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, (e, to) => e.children[to].value,to));
-
-                                    loop3 = true;
-                                    //trying to get a valid from value and checking if the to value was good enough
-                                    while (loop3) {
-                                        const from = Math.floor(Math.random() * Math.floor(await page.$eval(`div#${id} span[class="orderSegment fromTerrID"] select`, e=> e.length))) + 1;
-                                        console.log(`order support move from: ${from}`);
-                                        if (await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.length) === 1 && await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.children[0].innerHTML) === "") {
-                                            loop2 = true;
-                                            break;
-                                        }
-
-                                        if (await page.$eval(`div#${id} span[class="orderSegment fromTerrID"] select`, e => e.children[0].innerHTML) === "") {
-                                            await page.select(`div#${id} select[class="orderSegment fromTerrID"]`, await page.$eval(`div#${id} span[class="orderSegment fromTerrID"] select`, (e, from) => e.children[from].value, from));
-                                            break;
-                                        }
-
+                            case 1:
+                            case 2:
+                                {
+                                    //get a valid to value
+                                    const to = Math.floor(Math.random() * Math.floor(await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.length)));
+                                    console.log(`order: ${order}, to: ${to}`);
+                                    if (await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, (e, to) => e.children[to].innerHTML, to) !== "") {
+                                        loop2 = false;
+                                        await page.select(`div#${id} span[class="orderSegment toTerrID"] select`, await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, (e, to) => e.children[to].value, to));
                                     }
+                                    break;
                                 }
-                                break;
-                            }
+                            case 3:
+                                {
+                                    //valid to value
+                                    const to = Math.floor(Math.random() * Math.floor(await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.length)));
+                                    console.log(`order S Hold or Move: ${order}, to: ${to}`);
+                                    if (await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, (e, to) => e.children[to].innerHTML, to) !== "") {
+                                        loop2 = false;
+                                        await page.select(`div#${id} span[class="orderSegment toTerrID"] select`, await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, (e, to) => e.children[to].value, to));
+
+                                        loop3 = true;
+                                        //trying to get a valid from value and checking if the to value was good enough
+                                        while (loop3) {
+                                            const from = Math.floor(Math.random() * Math.floor(await page.$eval(`div#${id} span[class="orderSegment fromTerrID"] select`, e => e.length)));
+                                            console.log(`order support move from: ${from}`);
+                                            if (await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.length) === 1 && await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.children[0].innerHTML) === "") {
+                                                loop2 = true;
+                                                loop3 = false;
+                                                break;
+                                            } else if (await page.$eval(`div#${id} span[class="orderSegment fromTerrID"] select`, (e, from) => e.children[from].innerHTML, from) !== "") {
+                                                await page.select(`div#${id} span[class="orderSegment fromTerrID"] select`, await page.$eval(`div#${id} span[class="orderSegment fromTerrID"] select`, (e, from) => e.children[from].value, from));
+                                                break;
+                                            }
+
+                                        }
+                                    }
+                                    break;
+                                }
+                        }
                     }
                 }
             }
@@ -137,7 +138,7 @@ module.exports = {
         });
 
         //readying up
-        //await page.$eval('input[name="Ready"]', b =>b.click());
+        await page.$eval('input[name="Ready"]', b =>b.click());
 
 
 
