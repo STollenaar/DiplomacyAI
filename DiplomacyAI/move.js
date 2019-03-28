@@ -27,7 +27,7 @@ module.exports = {
         tries = 0;
         console.log(games);
         for (gameID in games) {
-            this.checkMove(games[gameID].bigId);
+           this.checkMove(games[gameID].bigId);
         }
     },
 
@@ -56,16 +56,16 @@ module.exports = {
             if ($('div.memberUserDetail').text().includes('No orders submitted!') || $('div.memberUserDetail').text().includes('but not ready for next turn')) {
                 await module.exports.makeRandomMove(html, gameId, browser, page);
             }
-             await page.close();
+            // await page.close();
         });
 
-        await browser.close();
+       // await browser.close();
 
     },
 
     async makeRandomMove(site, gameId, browser, page) {
         const $ = cheerio.load(site);
-        $('table.orders td[class="order"]').each(async function () {
+        await $('table.orders td[class="order"]').each(async function () {
             let tr = $(this);
             //removes the default selected option
             const id = tr.children('div').attr('id');
@@ -136,6 +136,7 @@ module.exports = {
 
         });
         //readying up
+        console.log("Readying");
         await page.$eval('input[name="Ready"]', b =>b.click());
     }
 };

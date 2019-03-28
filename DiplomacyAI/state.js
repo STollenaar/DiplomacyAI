@@ -7,7 +7,7 @@ let move;
 
 module.exports = {
 
-    init(u, a,c, m) {
+    init(u, a, c, m) {
         url = u;
         agent = a;
         cheerio = c;
@@ -70,7 +70,7 @@ module.exports = {
                 move.updateGames(games);
                 console.log(game);
             });
-           
+
         });
     }
 };

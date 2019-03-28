@@ -5,6 +5,7 @@ const cheerio = require('cheerio');
 const request = require('superagent');
 const database = require('./database');
 const state = require('./state');
+const game = require('./game');
 
 const move = require('./move');
 
@@ -28,10 +29,8 @@ fs.stat('./config.json', function (err, stat) {
 let agent = request.agent();
 move.init(url, agent, cheerio);
 state.init(url, agent, cheerio, move);
+game.init(url, agent, database);
 
-
-const smallId = '2360';
-const bigId = '236023';
 
 let userID = 0;
 let input = process.openStdin();
@@ -89,6 +88,10 @@ input.addListener("data", function (d) {
 
         case "checkMove":
             move.canMakeMoves();
+            break;
+
+        case "addGame":
+            game.gameAdding(d[1]);
             break;
     }
 
