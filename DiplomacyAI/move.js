@@ -72,8 +72,8 @@ module.exports = {
             let loop1 = true;
             //random order
             while (loop1) {
-                const order = Math.floor(Math.random() * Math.floor(4));
-                if (order === 0) {
+                const order = Math.floor(Math.random() * Math.floor(await page.$eval(`div#${id} span[class="orderSegment type"] select`, e => e.length)));
+                if (order === 0 && await page.$eval(`div#${id} span[class="orderSegment type"] select`, e => e.children[0].innerHTML) === "Hold") {
                     loop1 = false;
                     continue;
                 }
@@ -90,6 +90,7 @@ module.exports = {
                         //setting the orders correctly
                         switch (order) {
 
+                            case 0:
                             case 1:
                             case 2:
                                 {
@@ -135,8 +136,12 @@ module.exports = {
             }
 
         });
-        //readying up
-        console.log("Readying");
-        await page.$eval('input[name="Ready"]', b =>b.click());
+
+        setTimeout(async function () {
+            //readying up
+            console.log("Readying");
+            await page.$eval('input[name="Ready"]', b => b.click());
+        }, 3 * 1000);
+
     }
 };
