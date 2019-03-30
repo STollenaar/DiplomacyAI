@@ -143,5 +143,26 @@ module.exports = {
             await page.$eval('input[name="Ready"]', b => b.click());
         }, 3 * 1000);
 
+    },
+    async peek(gameId) {
+        const access = CookieAccess(
+            url.hostname,
+            url.pathname,
+            'https:' === url.protocol
+        );
+
+
+        const browser = await puppeteer.launch({ headless: false });
+        const page = await browser.newPage();
+
+        for (let cookies in agent.jar.getCookies(access)) {
+            cookies = agent.jar.getCookies(access)[cookies];
+            if (cookies !== undefined && cookies.value !== undefined) {
+                cookies.url = url;
+                await page.setCookie(cookies);
+            }
+        }
+        await page.goto(`${url}board.php?gameID=${gameId}`, { "waitUntil": "load" });
     }
+
 };

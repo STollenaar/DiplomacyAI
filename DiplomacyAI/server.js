@@ -93,6 +93,10 @@ input.addListener("data", function (d) {
         case "addGame":
             game.gameAdding(d[1]);
             break;
+
+        case "peek":
+            move.peek(d[1]);
+            break;
     }
 
 });
