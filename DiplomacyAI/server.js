@@ -41,7 +41,7 @@ let site;
 
 
 
-input.addListener("data", function (d) {
+input.addListener("data",async function (d) {
     d = d.toString().trim().split(" ");
 
     switch (d[0]) {
@@ -97,6 +97,13 @@ input.addListener("data", function (d) {
         case "peek":
             move.peek(d[1]);
             break;
+
+        case "path":
+            let finder = require('./pathFinding').init(database, d[1], d[2], d[3], d[4]);
+            console.log("Starting search");
+            console.log(await finder.findPath());
+            break;
+        
     }
 
 });

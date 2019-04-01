@@ -37,10 +37,34 @@ module.exports = {
         });
     },
 
+    getTerritory(gameID, id) {
+        return new Promise(function (resolve, reject) {
+            db.serialize(function () {
+                db.get(`SELECT * FROM territories WHERE gameID=${gameID} AND ID=${id};`, (err, row) =>resolve(row));
+            });
+        });
+    },
+
     addBorder(gameID, OwnID, BorderID, armyPass, fleetPass) {
         db.serialize(function () {
             db.run(`INSERT INTO borders ('gameID', 'ownID', 'borderID', 'armyPass', 'fleetPass') VALUES (${gameID}, ${OwnID}, ${BorderID}, '${armyPass}', '${fleetPass}');`);
         });
+    },
+
+    getBorders(gameID, OwnID, type, callback) {
+        if (type === "Army") {
+            return new Promise(function (resolve, reject) {
+                db.serialize(function () {
+                    db.all(`SELECT * FROM borders WHERE gameID=${gameID} AND ownID=${OwnID} AND armyPass='true';`, (err, rows) => resolve(rows));
+                });
+            });
+        } else {
+            return new Promise(function (resolve, reject) {
+                db.serialize(function () {
+                    db.all(`SELECT * FROM borders WHERE gameID=${gameID} AND ownID=${OwnID} AND fleetPass='true';`, (err, rows) => resolve(rows));
+                });
+            });
+        }
     },
 
     defaultConfig(fs, callback) {

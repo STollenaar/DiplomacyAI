@@ -38,6 +38,9 @@
     <Compile Include="move.js">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="pathFinding.js">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="server.js" />
     <Compile Include="state.js">
       <SubType>Code</SubType>
