@@ -23,15 +23,18 @@ module.exports = {
         games = g;
     },
 
-    canMakeMoves() {
+    async canMakeMoves() {
         tries = 0;
         console.log(games);
+        const browser = await puppeteer.launch();
         for (gameID in games) {
-           this.checkMove(games[gameID].bigId);
+         await this.checkMove(games[gameID].bigId, browser);
         }
+        console.log("Done checking games");
+       // await browser.close();
     },
 
-    async checkMove(gameId) {
+    async checkMove(gameId, browser) {
         const access = CookieAccess(
             url.hostname,
             url.pathname,
@@ -39,7 +42,7 @@ module.exports = {
         );
 
 
-        const browser = await puppeteer.launch();
+        
         const page = await browser.newPage();
 
         for (let cookies in agent.jar.getCookies(access)) {
@@ -56,11 +59,7 @@ module.exports = {
             if ($('div.memberUserDetail').text().includes('No orders submitted!') || $('div.memberUserDetail').text().includes('but not ready for next turn')) {
                 await module.exports.makeRandomMove(html, gameId, browser, page);
             }
-            // await page.close();
         });
-
-       // await browser.close();
-
     },
 
     async makeRandomMove(site, gameId, browser, page) {
@@ -81,7 +80,7 @@ module.exports = {
                 console.log(tr.children('div').children('span[class="orderSegment type"]').children('select').children().eq(order).attr('value'));
                 await page.select(`div#${id} select[ordertype="type"]`, tr.children('div').children('span[class="orderSegment type"]').children('select').children().eq(order).attr('value'));
 
-                if (await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.length) === 1 && await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.children[0].innerHTML) === "") {
+                if (await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.length) === 1 && ["", "Convoy"].includes(await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.children[0].innerHTML))) {
                     continue;
                 } else {
                     loop1 = false;
@@ -141,6 +140,7 @@ module.exports = {
             //readying up
             console.log("Readying");
             await page.$eval('input[name="Ready"]', b => b.click());
+            await page.close();
         }, 3 * 1000);
 
     }

@@ -104,10 +104,9 @@ function login() {
         const $ = cheerio.load(response.text);
         userID = $('div #header-welcome a').attr('href').split('=')[1];
         //navigates to the user profile
-        agent.get(`${url}profile.php?userID=${userID}`).then(async function (r) {
+        agent.get(`${url}index.php`).then(async function (r) {
             site = r.text;
             state.updateSite(site);
-            move.updateGames(site);
             printUser();
             state.gameFinder();
         });

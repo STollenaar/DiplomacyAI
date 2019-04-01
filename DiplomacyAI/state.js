@@ -58,10 +58,10 @@ module.exports = {
         let $ = cheerio.load(site);
         games = [];
         //going to loop over every game you are in
-        $('div.gamelistings-tabs a').each(function () {
+        $('td[class="homeGamesStats"] div div[class="bar homeGameLinks barAlt2"] a').each(function () {
             let game = {};
             //gets the main id needed from each game from the open link
-            game.bigId = $(this).attr('gameid');
+            game.bigId = $(this).attr('href').split('=')[1].split('#')[0];
             //quick navigation to that game
             agent.get(`${url}board.php?gameID=${game.bigId}#gamePanel`).then(function (r) {
                 const $2 = cheerio.load(r.text); //just loads that game page into cheerio
