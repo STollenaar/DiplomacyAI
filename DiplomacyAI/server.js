@@ -99,7 +99,7 @@ input.addListener("data",async function (d) {
             break;
 
         case "path":
-            let finder = require('./pathFinding').init(database, d[1], d[2], d[3], d[4]);
+            let finder = await require('./pathFinding').init(database,agent,url, d[1], d[2], d[3], d[4]);
             console.log("Starting search");
             console.log(await finder.findPath());
             break;

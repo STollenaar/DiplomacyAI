@@ -47,8 +47,8 @@ module.exports = {
                     terr.type = t.type;
                     terr.supply = t.supply;
 
-                    for (let b in t.Borders) {
-                        b = t.Borders[b];
+                    for (let b in t.CoastalBorders) {
+                        b = t.CoastalBorders[b];
                         let border = {};
                         if (b.a === undefined || b.a === null) {
                             continue;
