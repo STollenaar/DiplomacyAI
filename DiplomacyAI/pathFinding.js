@@ -74,15 +74,16 @@ module.exports = {
             fromT.__proto__ = window.UnitClass.prototype;
             fromT.Territory = fromT;
             fromT.type = unitType;
-
-            return fromT.canMoveInto(Territories._object[toID]);
+            
+            //return fromT.canMoveInto(Territories._object[toID]);
+            return fromT.getMoveChoices().include(toID);
         }, fromID, toID, unitType);
         return mess;
     },
 
     async findPath() {
         while (openList.length !== 0) {
-            let current = openList.pop();
+            let current = openList.shift();
             closedList.push(current);
             if (current.ID === goalID) {
                 //construct from start to goal
