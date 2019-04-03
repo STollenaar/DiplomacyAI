@@ -43,10 +43,43 @@ module.exports = {
         }
         await page.goto(`${url}board.php?gameID=${gameID}`, { "waitUntil": "load" });
 
+        if (goalID <= -1) {
+            goalID = await this.findClosestSupply(startID, Math.abs(goalID));
+            console.log(goalID);
+        }
+
         return this;
     },
 
+    async findClosestSupply(fromID, country) {
+        while (openList.length !== 0) {
+            let current = openList.shift(); //get the next element in the queue
+            closedList.push(current);
+            current = await database.getTerritory(gameID, current.ID); //get the next element in the queue
 
+            let isHostileSupply = await page.evaluate((fromID, country) => {
+                let fromT = window.Territories._object[fromID];
+                return fromT.supply && parseInt(fromT.ownerCountryID) !== country;
+            }, fromID, country);
+
+            if (isHostileSupply) {
+                //construct from start to goal
+                return current.ID;
+
+            } else {
+                let rows = await database.getBorders(gameID, current.ID, unitType);
+                for (let r in rows) {
+                    r = rows[r];
+                    //check if next id is good
+                    if (!module.exports.inClosed(r.borderID) && !module.exports.inOpen(r.borderID)) {
+                        openList.push(new Node(current, r.borderID));
+                    }
+                }
+            }
+        }
+    },
+
+    //check if toID is in closed list
     inClosed(toID) {
         for (let c in closedList) {
             c = closedList[c];
@@ -57,6 +90,7 @@ module.exports = {
         return false;
     },
 
+    //check if toID is in open list
     inOpen(toID) {
         for (let c in openList) {
             c = openList[c];
@@ -68,22 +102,20 @@ module.exports = {
     },
 
     async isLegalMove(fromID, toID) {
-        //creating the mess... aka making a serializable object
-        let mess = await page.evaluate((fromID, toID, unitType) => {
+        //creating the mess... creating an unit out of a Territory
+        return await page.evaluate((fromID, toID, unitType) => {
             let fromT = window.Territories._object[fromID];
             fromT.__proto__ = window.UnitClass.prototype;
             fromT.Territory = fromT;
             fromT.type = unitType;
-            
-            //return fromT.canMoveInto(Territories._object[toID]);
+
             return fromT.getMoveChoices().include(toID);
         }, fromID, toID, unitType);
-        return mess;
     },
 
     async findPath() {
         while (openList.length !== 0) {
-            let current = openList.shift();
+            let current = openList.shift(); //get the next element in the queue
             closedList.push(current);
             if (current.ID === goalID) {
                 //construct from start to goal
@@ -99,6 +131,7 @@ module.exports = {
                 let rows = await database.getBorders(gameID, current.ID, unitType);
                 for (let r in rows) {
                     r = rows[r];
+                    //check if next id is good
                     if (!module.exports.inClosed(r.borderID) && !module.exports.inOpen(r.borderID) && await this.isLegalMove(current.ID, r.borderID)) {
                         openList.push(new Node(current, r.borderID));
                     }
