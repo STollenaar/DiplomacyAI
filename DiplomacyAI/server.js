@@ -1,4 +1,4 @@
-const url = 'https://webdiplomacy.net/';
+let url;
 
 const fs = require('fs');
 const cheerio = require('cheerio');
@@ -15,11 +15,13 @@ let config;
 fs.stat('./config.json', function (err, stat) {
     if (err === null) {
         config = require('./config.json');
+        url = require('./config.json')[0].Site;
         login();
     } else if (err.code === 'ENOENT') {
         console.log("Deploying config");
         database.defaultConfig(fs, function () {
             config = require('./config.json');
+            url = require('./config.json')[0].Site;
         });
     }
 
