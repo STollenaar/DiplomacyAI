@@ -1,5 +1,3 @@
-let url;
-
 const fs = require('fs');
 const cheerio = require('cheerio');
 const request = require('superagent');
@@ -9,6 +7,7 @@ const game = require('./game');
 
 const move = require('./move');
 
+let url;
 let config;
 
 
