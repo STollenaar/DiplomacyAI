@@ -14,13 +14,13 @@ let config;
 fs.stat('./config.json', function (err, stat) {
     if (err === null) {
         config = require('./config.json');
-        url = require('./config.json')[0].Site;
+        url = config[0].Site;
         login();
     } else if (err.code === 'ENOENT') {
         console.log("Deploying config");
         database.defaultConfig(fs, function () {
             config = require('./config.json');
-            url = require('./config.json')[0].Site;
+            url = config[0].Site;
         });
     }
 
