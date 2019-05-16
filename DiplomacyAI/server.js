@@ -9,28 +9,33 @@ const move = require('./move');
 
 let url;
 let config;
-
+let agent = request.agent();
 
 fs.stat('./config.json', function (err, stat) {
     if (err === null) {
         config = require('./config.json');
         url = config[0].Site;
+
+        move.init(url, agent, cheerio);
+        state.init(url, agent, cheerio, move);
+        game.init(url, agent, database);
         login();
     } else if (err.code === 'ENOENT') {
         console.log("Deploying config");
         database.defaultConfig(fs, function () {
             config = require('./config.json');
             url = config[0].Site;
+
+            move.init(url, agent, cheerio);
+            state.init(url, agent, cheerio, move);
+            game.init(url, agent, database);
         });
     }
 
 });
 
 
-let agent = request.agent();
-move.init(url, agent, cheerio);
-state.init(url, agent, cheerio, move);
-game.init(url, agent, database);
+
 
 
 let userID = 0;

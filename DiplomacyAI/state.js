@@ -58,7 +58,7 @@ module.exports = {
         let $ = cheerio.load(site);
         games = [];
         //going to loop over every game you are in
-        $('td[class="homeGamesStats"] div div[class="bar homeGameLinks barAlt2"] a').each(function () {
+        $('td[class="homeGamesStats"] div div[class*="bar homeGameLinks"] a').each(function () {
             let game = {};
             //gets the main id needed from each game from the open link
             game.bigId = $(this).attr('href').split('=')[1].split('#')[0];
