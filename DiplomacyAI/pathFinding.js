@@ -56,14 +56,16 @@ module.exports = {
             let current = openList.shift(); //get the next element in the queue
             closedList.push(current);
             current = await database.getTerritory(gameID, current.ID); //get the next element in the queue
-
-            let isHostileSupply = await page.evaluate((fromID, country) => {
-                let fromT = window.Territories._object[fromID];
+            let id = current.ID;
+            let isHostileSupply = await page.evaluate((id, country) => {
+                let fromT = window.Territories._object[id];
                 return fromT.supply && parseInt(fromT.ownerCountryID) !== country;
-            }, fromID, country);
-
+            }, id, country);
             if (isHostileSupply) {
-                //construct from start to goal
+                //cleaning up and getting ready for path finding..
+                openList = [];
+                closedList = [];
+                openList.push(new Node(-1, parseInt(fromID)));
                 return current.ID;
 
             } else {
@@ -105,7 +107,7 @@ module.exports = {
         //creating the mess... creating an unit out of a Territory
         return await page.evaluate((fromID, toID, unitType) => {
             let fromT = window.Territories._object[fromID];
-            fromT.__proto__ = window.UnitClass.prototype;
+            Object.extend(fromT, new window.UnitClass);
             fromT.Territory = fromT;
             fromT.type = unitType;
 
