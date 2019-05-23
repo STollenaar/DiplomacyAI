@@ -72,12 +72,11 @@ module.exports = {
             //random order
             while (loop1) {
                 const order = Math.floor(Math.random() * Math.floor(await page.$eval(`div#${id} span[class="orderSegment type"] select`, e => e.length)));
-                if (order === 0 && await page.$eval(`div#${id} span[class="orderSegment type"] select`, e => e.children[0].innerHTML) === "Hold") {
-                    loop1 = false;
-                    continue;
-                }
-
                 console.log(tr.children('div').children('span[class="orderSegment type"]').children('select').children().eq(order).attr('value'));
+
+                if (order === 0 && tr.children('div').children('span[class="orderSegment type"]').children('select').children().eq(order).attr('value') === "Hold") {
+                    break;
+                }
                 await page.select(`div#${id} select[ordertype="type"]`, tr.children('div').children('span[class="orderSegment type"]').children('select').children().eq(order).attr('value'));
 
                 if (await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.length) === 1 && ["", "Convoy"].includes(await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.children[0].innerHTML))) {
@@ -106,7 +105,7 @@ module.exports = {
                                 {
                                     //valid to value
                                     const to = Math.floor(Math.random() * Math.floor(await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.length)));
-                                    console.log(`order S Hold or Move: ${order}, to: ${to}`);
+                                    console.log(`order S Move: ${order}, to: ${to}`);
                                     if (await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, (e, to) => e.children[to].innerHTML, to) !== "") {
                                         loop2 = false;
                                         await page.select(`div#${id} span[class="orderSegment toTerrID"] select`, await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, (e, to) => e.children[to].value, to));
@@ -116,7 +115,7 @@ module.exports = {
                                         while (loop3) {
                                             const from = Math.floor(Math.random() * Math.floor(await page.$eval(`div#${id} span[class="orderSegment fromTerrID"] select`, e => e.length)));
                                             console.log(`order support move from: ${from}`);
-                                            if (await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.length) === 1 && await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.children[0].innerHTML) === "") {
+                                            if (await page.$eval(`div#${id} span[class="orderSegment fromTerrID"] select`, e => e.length) === 1 && await page.$eval(`div#${id} span[class="orderSegment fromTerrID"] select`, e => e.children[0].innerHTML) === "") {
                                                 loop2 = true;
                                                 loop3 = false;
                                                 break;
