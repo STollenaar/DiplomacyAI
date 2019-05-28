@@ -11,7 +11,7 @@ let site;
 let tries = 0;
 
 module.exports = {
-    init(u, a, c,d) {
+    init(u, a, c, d) {
         url = u;
         agent = a;
         cheerio = c;
@@ -31,10 +31,10 @@ module.exports = {
         console.log(games);
         const browser = await puppeteer.launch();
         for (gameID in games) {
-         await this.checkMove(games[gameID].bigId, browser);
+            await this.checkMove(games[gameID].bigId, browser);
         }
         console.log("Done checking games");
-       // await browser.close();
+        // await browser.close();
     },
 
     async checkMove(gameId, browser) {
@@ -45,7 +45,7 @@ module.exports = {
         );
 
 
-        
+
         const page = await browser.newPage();
 
         for (let cookies in agent.jar.getCookies(access)) {
@@ -147,6 +147,7 @@ module.exports = {
         }, 3 * 1000);
 
     },
+
     async peek(gameId) {
         const access = CookieAccess(
             url.hostname,
@@ -172,15 +173,18 @@ module.exports = {
     async makeMove(site, gameId, page) {
         const $ = cheerio.load(site);
         const countryID = -$('span[class*="memberYourCountry"]').attr('class').split(' ')[0].substr(-1);
+        let supplies = [];
         await $('table.orders td[class="order"]').each(async function () {
             let tr = $(this);
             const spanWords = tr.children('div').children('span[class="orderSegment orderBegin"]').text();
             const terr = spanWords.slice(spanWords.split('at')[0].length + 3).trim();
             const terrID = (await database.getTerritoryByName(gameId, terr)).ID;
             let finder = new PathFinding(database, agent, url, gameId, terrID, countryID, spanWords.split(' ')[1].trim());
-            await finder.init();
-            const moveToID = await finder.findPath();
-            console.log(`the AI will try to move the ${spanWords.split(' ')[1].trim()} at ${terr} to ID:${moveToID}, name:${(await database.getTerritoryByID(gameId, moveToID)).name}`);
+            await finder.init(true);
+            supplies.push(await finder.findClosestSupply(terrID, countryID));
+            console.log(supplies);
+            //   const moveToID = await finder.findPath();
+            // console.log(`the AI will try to move the ${spanWords.split(' ')[1].trim()} at ${terr} to ID:${moveToID}, name:${(await database.getTerritoryByID(gameId, moveToID)).name}`);
         });
     }
 };

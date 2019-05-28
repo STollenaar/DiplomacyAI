@@ -14,7 +14,7 @@ PathFinding = function (d, a, u, game, startID, goal, unit) {
     this.unitType = unit;
     this.startID = startID;
 
-    this.init = async function () {
+    this.init = async function (ignoreGoal) {
         this.browser = await puppeteer.launch();
         this.page = await this.browser.newPage();
 
@@ -33,18 +33,20 @@ PathFinding = function (d, a, u, game, startID, goal, unit) {
         }
         await this.page.goto(`${this.url}board.php?gameID=${this.gameID}`, { "waitUntil": "load" });
 
-        if (this.goalID <= -1) {
-            this.goalID = await this.findClosestSupply(this.startID, Math.abs(this.goalID));
+        if (this.goalID <= -1 && !ignoreGoal) {
+            this.goalID = await this.findClosestSupply(this.startID, Math.abs(this.goalID), blocked);
         }
     };
 
     this.findClosestSupply = async function (fromID, country) {
+        let supplies = [];
         while (this.openList.length !== 0) {
             let current = this.openList.shift(); //get the next element in the queue
             this.closedList.push(current);
             current = await this.database.getTerritoryByID(this.gameID, current.ID); //get the next element in the queue
             let id = current.ID;
             let isHostileSupply = await this.page.evaluate((id, country) => {
+
                 let fromT = window.Territories._object[id];
                 return fromT.supply && parseInt(fromT.ownerCountryID) !== country;
             }, id, country);
@@ -53,7 +55,7 @@ PathFinding = function (d, a, u, game, startID, goal, unit) {
                 this.openList = [];
                 this.closedList = [];
                 this.openList.push(new Node(-1, parseInt(fromID)));
-                return current.ID;
+                supplies.push(current.ID);
 
             } else {
                 let rows = await this.database.getBorders(this.gameID, current.ID, this.unitType);
@@ -66,6 +68,7 @@ PathFinding = function (d, a, u, game, startID, goal, unit) {
                 }
             }
         }
+        return supplies;
     };
 
     //check if toID is in closed list
