@@ -1,111 +1,99 @@
 ﻿const CookieAccess = require('cookiejar').CookieAccessInfo;
 const puppeteer = require('puppeteer');
 
-let database;
-let closedList = [];
-let openList = [];
-let goalID = [];
-let unitType;
-let gameID;
-let agent;
-let browser;
-let page;
-let url;
+PathFinding = function (d, a, u, game, startID, goal, unit) {
+    this.database = d;
+    this.agent = a;
+    this.url = u;
 
-module.exports = {
+    this.gameID = parseInt(game);
+    this.closedList = [];
+    this.openList = [];
+    this.openList.push(new Node(-1, parseInt(startID)));
+    this.goalID = parseInt(goal);
+    this.unitType = unit;
+    this.startID = startID;
 
-
-    async init(d, a, u, game, startID, goal, unit) {
-        database = d;
-        agent = a;
-        url = u;
-        browser = await puppeteer.launch();
-        page = await browser.newPage();
-        gameID = parseInt(game);
-        closedList = [];
-        openList = [];
-        openList.push(new Node(-1, parseInt(startID)));
-        goalID = parseInt(goal);
-        unitType = unit;
+    this.init = async function () {
+        this.browser = await puppeteer.launch();
+        this.page = await this.browser.newPage();
 
         const access = CookieAccess(
-            url.hostname,
-            url.pathname,
-            'https:' === url.protocol
+            this.url.hostname,
+            this.url.pathname,
+            'https:' === this.url.protocol
         );
 
-        for (let cookies in agent.jar.getCookies(access)) {
-            cookies = agent.jar.getCookies(access)[cookies];
+        for (let cookies in this.agent.jar.getCookies(access)) {
+            cookies = this.agent.jar.getCookies(access)[cookies];
             if (cookies !== undefined && cookies.value !== undefined) {
-                cookies.url = url;
-                await page.setCookie(cookies);
+                cookies.url = this.url;
+                await this.page.setCookie(cookies);
             }
         }
-        await page.goto(`${url}board.php?gameID=${gameID}`, { "waitUntil": "load" });
+        await this.page.goto(`${this.url}board.php?gameID=${this.gameID}`, { "waitUntil": "load" });
 
-        if (goalID <= -1) {
-            goalID = await this.findClosestSupply(startID, Math.abs(goalID));
-            console.log(goalID);
+        if (this.goalID <= -1) {
+            this.goalID = await this.findClosestSupply(this.startID, Math.abs(this.goalID));
         }
+    };
 
-        return this;
-    },
-
-    async findClosestSupply(fromID, country) {
-        while (openList.length !== 0) {
-            let current = openList.shift(); //get the next element in the queue
-            closedList.push(current);
-            current = await database.getTerritory(gameID, current.ID); //get the next element in the queue
+    this.findClosestSupply = async function (fromID, country) {
+        while (this.openList.length !== 0) {
+            let current = this.openList.shift(); //get the next element in the queue
+            this.closedList.push(current);
+            current = await this.database.getTerritoryByID(this.gameID, current.ID); //get the next element in the queue
             let id = current.ID;
-            let isHostileSupply = await page.evaluate((id, country) => {
+            let isHostileSupply = await this.page.evaluate((id, country) => {
                 let fromT = window.Territories._object[id];
                 return fromT.supply && parseInt(fromT.ownerCountryID) !== country;
             }, id, country);
             if (isHostileSupply) {
                 //cleaning up and getting ready for path finding..
-                openList = [];
-                closedList = [];
-                openList.push(new Node(-1, parseInt(fromID)));
+                this.openList = [];
+                this.closedList = [];
+                this.openList.push(new Node(-1, parseInt(fromID)));
                 return current.ID;
 
             } else {
-                let rows = await database.getBorders(gameID, current.ID, unitType);
+                let rows = await this.database.getBorders(this.gameID, current.ID, this.unitType);
                 for (let r in rows) {
                     r = rows[r];
                     //check if next id is good
-                    if (!module.exports.inClosed(r.borderID) && !module.exports.inOpen(r.borderID)) {
-                        openList.push(new Node(current, r.borderID));
+                    if (!this.inClosed(r.borderID) && !this.inOpen(r.borderID)) {
+                        this.openList.push(new Node(current, r.borderID));
                     }
                 }
             }
         }
-    },
+    };
 
     //check if toID is in closed list
-    inClosed(toID) {
-        for (let c in closedList) {
-            c = closedList[c];
+    this.inClosed = function (toID) {
+        for (let c in this.closedList) {
+            c = this.closedList[c];
             if (c.ID === toID) {
                 return true;
             }
         }
         return false;
-    },
+    };
 
     //check if toID is in open list
-    inOpen(toID) {
-        for (let c in openList) {
-            c = openList[c];
+    this.inOpen = function (toID) {
+        for (let c in this.openList) {
+            c = this.openList[c];
             if (c.ID === toID) {
                 return true;
             }
         }
         return false;
-    },
+    };
 
-    async isLegalMove(fromID, toID) {
+    this.isLegalMove = async function (fromID, toID) {
         //creating the mess... creating an unit out of a Territory
-        return await page.evaluate((fromID, toID, unitType) => {
+        let unitType = this.unitType;
+        return await this.page.evaluate((fromID, toID, unitType) => {
             let fromT = window.Territories._object[fromID];
             Object.extend(fromT, new window.UnitClass);
             fromT.Territory = fromT;
@@ -113,38 +101,37 @@ module.exports = {
 
             return fromT.getMoveChoices().include(toID);
         }, fromID, toID, unitType);
-    },
+    };
 
-    async findPath() {
-        while (openList.length !== 0) {
-            let current = openList.shift(); //get the next element in the queue
-            closedList.push(current);
-            if (current.ID === goalID) {
+    this.findPath = async function () {
+        while (this.openList.length !== 0) {
+            let current = this.openList.shift(); //get the next element in the queue
+            this.closedList.push(current);
+            if (current.ID === this.goalID) {
                 //construct from start to goal
                 let path = [];
                 while (current.ID !== undefined) {
-                    let thing = await database.getTerritory(gameID, current.ID);
-                    path.push(`${thing.name} ${thing.ID}`);
+                    let thing = await this.database.getTerritoryByID(this.gameID, current.ID);
+                    path.push(thing.ID);
                     current = current.parent;
                 }
-                return path.reverse();
+                return path.reverse()[1];
 
             } else {
-                let rows = await database.getBorders(gameID, current.ID, unitType);
+                let rows = await this.database.getBorders(this.gameID, current.ID, this.unitType);
                 for (let r in rows) {
                     r = rows[r];
                     //check if next id is good
-                    if (!module.exports.inClosed(r.borderID) && !module.exports.inOpen(r.borderID) && await this.isLegalMove(current.ID, r.borderID)) {
-                        openList.push(new Node(current, r.borderID));
+                    if (!this.inClosed(r.borderID) && !this.inOpen(r.borderID) && await this.isLegalMove(current.ID, r.borderID)) {
+                        this.openList.push(new Node(current, r.borderID));
                     }
                 }
             }
         }
-        return ['no', 'path'];
-    }
+        return -1;
+    };
 
-
-
+    return this;
 };
 Node = function (parent, id) {
     let self = {};

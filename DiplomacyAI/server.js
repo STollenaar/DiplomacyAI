@@ -4,7 +4,7 @@ const request = require('superagent');
 const database = require('./database');
 const state = require('./state');
 const game = require('./game');
-
+const pathFinding = require('./pathFinding');
 const move = require('./move');
 
 let url;
@@ -16,7 +16,7 @@ fs.stat('./config.json', function (err, stat) {
         config = require('./config.json');
         url = config[0].Site;
 
-        move.init(url, agent, cheerio);
+        move.init(url, agent, cheerio, database);
         state.init(url, agent, cheerio, move);
         game.init(url, agent, database);
         login();
@@ -26,7 +26,7 @@ fs.stat('./config.json', function (err, stat) {
             config = require('./config.json');
             url = config[0].Site;
 
-            move.init(url, agent, cheerio);
+            move.init(url, agent, cheerio, database);
             state.init(url, agent, cheerio, move);
             game.init(url, agent, database);
         });
@@ -105,7 +105,7 @@ input.addListener("data",async function (d) {
             break;
 
         case "path":
-            let finder = await require('./pathFinding').init(database,agent,url, d[1], d[2], d[3], d[4]);
+            let finder = await new PathFinding(database,agent,url, d[1], d[2], d[3], d[4]);
             console.log("Starting search");
             console.log(await finder.findPath());
             break;

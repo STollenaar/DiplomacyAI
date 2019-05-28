@@ -1,18 +1,21 @@
 ﻿const CookieAccess = require('cookiejar').CookieAccessInfo;
 const puppeteer = require('puppeteer');
+const pathfinding = require('./pathFinding');
 
 let agent;
 let cheerio;
 let url;
 let games = [];
+let database;
 let site;
 let tries = 0;
 
 module.exports = {
-    init(u, a, c) {
+    init(u, a, c,d) {
         url = u;
         agent = a;
         cheerio = c;
+        database = d;
     },
 
     updateSite(s) {
@@ -57,12 +60,13 @@ module.exports = {
             const html = await page.content();
             const $ = cheerio.load(html);
             if ($('div.memberUserDetail').text().includes('No orders submitted!') || $('div.memberUserDetail').text().includes('but not ready for next turn')) {
-                await module.exports.makeRandomMove(html, gameId, browser, page);
+                //await module.exports.makeRandomMove(html, page);
+                await module.exports.makeMove(html, gameId, page);
             }
         });
     },
 
-    async makeRandomMove(site, gameId, browser, page) {
+    async makeRandomMove(site, page) {
         const $ = cheerio.load(site);
         await $('table.orders td[class="order"]').each(async function () {
             let tr = $(this);
@@ -162,6 +166,21 @@ module.exports = {
             }
         }
         await page.goto(`${url}board.php?gameID=${gameId}`, { "waitUntil": "load" });
-    }
+    },
 
+
+    async makeMove(site, gameId, page) {
+        const $ = cheerio.load(site);
+        const countryID = -$('span[class*="memberYourCountry"]').attr('class').split(' ')[0].substr(-1);
+        await $('table.orders td[class="order"]').each(async function () {
+            let tr = $(this);
+            const spanWords = tr.children('div').children('span[class="orderSegment orderBegin"]').text();
+            const terr = spanWords.slice(spanWords.split('at')[0].length + 3).trim();
+            const terrID = (await database.getTerritoryByName(gameId, terr)).ID;
+            let finder = new PathFinding(database, agent, url, gameId, terrID, countryID, spanWords.split(' ')[1].trim());
+            await finder.init();
+            const moveToID = await finder.findPath();
+            console.log(`the AI will try to move the ${spanWords.split(' ')[1].trim()} at ${terr} to ID:${moveToID}, name:${(await database.getTerritoryByID(gameId, moveToID)).name}`);
+        });
+    }
 };
