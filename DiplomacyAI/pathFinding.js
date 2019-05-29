@@ -38,7 +38,7 @@ PathFinding = function (d, a, u, game, startID, goal, unit) {
         }
     };
 
-    this.findClosestSupply = function (fromID, country) {
+    this.findClosestSupply = function (fromID, country, index) {
         return new Promise(async resolve => {
             let supplies = [];
             while (this.openList.length !== 0) {
@@ -54,7 +54,7 @@ PathFinding = function (d, a, u, game, startID, goal, unit) {
                 }, id, country);
                 if (isHostileSupply) {
 
-                    supplies.push({ id: current.ID, name: current.name, distance:h});
+                    supplies.push({ id: current.ID, name: current.name, distance:h, index:index});
                 } else {
                     let rows = await this.database.getBorders(this.gameID, current.ID, this.unitType);
                     for (let r in rows) {

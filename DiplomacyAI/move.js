@@ -1,6 +1,7 @@
 ﻿const CookieAccess = require('cookiejar').CookieAccessInfo;
 const puppeteer = require('puppeteer');
 const pathfinding = require('./pathFinding');
+const _ = require('lodash');
 
 let agent;
 let cheerio;
@@ -9,6 +10,54 @@ let games = [];
 let database;
 let site;
 let tries = 0;
+
+
+//const sortingFunction = {
+//    '1': (a, b) => {
+//        a =
+//            b = b.name.split('(')[0].trim();
+//        return a === b ? 1 : 0;
+//    },
+//    '0': (a, b) => {
+//        return a.distance - b.distance;
+//    },
+//    '2': (a, b) => {
+//        return a.index - b.index;
+//    }
+//};
+
+
+//const sequence = (array) => {
+//    let groups = Object.create(null),
+//        result = array
+//            .map(function (a, i) {
+//                return { index: i, group: (groups[a.index] = groups[a.index] || []).push(a) };
+//            })
+//            .sort(function (a, b) {
+//                return a.group - b.group || a.index - b.index;
+//            })
+//            .map(function (o) {
+//                return array[o.index];
+//            });
+//    return result;
+//};
+
+//const unique = (value, index, self) => {
+//    return self.indexOf(value.name.split('(')[0]) === index;
+//}
+
+const extract = (array) => {
+    let maxD = Math.max.apply(Math, array.map(function (o) { return o.distance; }));
+    let maxI = Math.max.apply(Math, array.map(function (o) { return o.index; }));
+    let results = [];
+    for (let i = 1; i <= maxD; i++) {
+        let objects = array.filter(a => a.distance === i);
+        let firstPass = _.uniqBy(objects, (e) => { return [e.name.split('(')[0].trim(), e.index]; });
+
+        console.log(objects);
+    }
+};
+
 
 module.exports = {
     init(u, a, c, d) {
@@ -184,8 +233,8 @@ module.exports = {
                 const terrID = (await database.getTerritoryByName(gameId, terr)).ID;
                 let finder = new PathFinding(database, agent, url, gameId, terrID, -countryID, spanWords.split(' ')[1].trim());
                 await finder.init(true);
-                await finder.findClosestSupply(terrID, countryID).then((object) => {
-                    supplies.push(object);
+                await finder.findClosestSupply(terrID, countryID, index).then((object) => {
+                    supplies = supplies.concat(object);
                     resolved++;
                     if (resolved === orderLength) {
                         resolve();
@@ -195,6 +244,8 @@ module.exports = {
                 // console.log(`the AI will try to move the ${spanWords.split(' ')[1].trim()} at ${terr} to ID:${moveToID}, name:${(await database.getTerritoryByID(gameId, moveToID)).name}`);
             });
         });
-        console.log(supplies);
+        supplies = supplies.sort((a, b) => { return a.distance - b.distance; });
+        //console.log(supplies);
+        extract(supplies);
     }
 };
