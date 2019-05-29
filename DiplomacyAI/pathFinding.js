@@ -9,7 +9,7 @@ PathFinding = function (d, a, u, game, startID, goal, unit) {
     this.gameID = parseInt(game);
     this.closedList = [];
     this.openList = [];
-    this.openList.push(new Node(-1, parseInt(startID)));
+    this.openList.push(new Node(-1, parseInt(startID), 0));
     this.goalID = parseInt(goal);
     this.unitType = unit;
     this.startID = startID;
@@ -38,37 +38,41 @@ PathFinding = function (d, a, u, game, startID, goal, unit) {
         }
     };
 
-    this.findClosestSupply = async function (fromID, country) {
-        let supplies = [];
-        while (this.openList.length !== 0) {
-            let current = this.openList.shift(); //get the next element in the queue
-            this.closedList.push(current);
-            current = await this.database.getTerritoryByID(this.gameID, current.ID); //get the next element in the queue
-            let id = current.ID;
-            let isHostileSupply = await this.page.evaluate((id, country) => {
+    this.findClosestSupply = function (fromID, country) {
+        return new Promise(async resolve => {
+            let supplies = [];
+            while (this.openList.length !== 0) {
+                let current = this.openList.shift(); //get the next element in the queue
+                let h = current.h;
+                this.closedList.push(current);
+                current = await this.database.getTerritoryByID(this.gameID, current.ID); //get the next element in the queue
+                let id = current.ID;
+                let isHostileSupply = await this.page.evaluate((id, country) => {
 
-                let fromT = window.Territories._object[id];
-                return fromT.supply && parseInt(fromT.ownerCountryID) !== country;
-            }, id, country);
-            if (isHostileSupply) {
-                //cleaning up and getting ready for path finding..
-                this.openList = [];
-                this.closedList = [];
-                this.openList.push(new Node(-1, parseInt(fromID)));
-                supplies.push(current.ID);
+                    let fromT = window.Territories._object[id];
+                    return fromT.supply && parseInt(fromT.countryID) !== parseInt(country);
+                }, id, country);
+                if (isHostileSupply) {
 
-            } else {
-                let rows = await this.database.getBorders(this.gameID, current.ID, this.unitType);
-                for (let r in rows) {
-                    r = rows[r];
-                    //check if next id is good
-                    if (!this.inClosed(r.borderID) && !this.inOpen(r.borderID)) {
-                        this.openList.push(new Node(current, r.borderID));
+                    supplies.push({ id: current.ID, name: current.name, distance:h});
+                } else {
+                    let rows = await this.database.getBorders(this.gameID, current.ID, this.unitType);
+                    for (let r in rows) {
+                        r = rows[r];
+                        //check if next id is good
+                        if (!this.inClosed(r.borderID) && !this.inOpen(r.borderID)) {
+                            this.openList.push(new Node(current, r.borderID, h+1));
+                        }
                     }
                 }
             }
-        }
-        return supplies;
+            //cleaning up and getting ready for path finding..
+            this.openList = [];
+            this.openList.push(new Node(-1, parseInt(fromID), 0));
+            this.closedList = [];
+           // console.log(supplies);
+            resolve(supplies);
+        });
     };
 
     //check if toID is in closed list
@@ -136,9 +140,10 @@ PathFinding = function (d, a, u, game, startID, goal, unit) {
 
     return this;
 };
-Node = function (parent, id) {
+Node = function (parent, id, h) {
     let self = {};
     self.parent = parent;
     self.ID = id;
+    self.h = h;
     return self;
 };

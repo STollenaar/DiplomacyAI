@@ -172,19 +172,29 @@ module.exports = {
 
     async makeMove(site, gameId, page) {
         const $ = cheerio.load(site);
-        const countryID = -$('span[class*="memberYourCountry"]').attr('class').split(' ')[0].substr(-1);
+        const countryID = $('span[class*="memberYourCountry"]').attr('class').split(' ')[0].substr(-1);
+        const orderLength = $('table.orders tbody').children().length;
         let supplies = [];
-        await $('table.orders td[class="order"]').each(async function () {
-            let tr = $(this);
-            const spanWords = tr.children('div').children('span[class="orderSegment orderBegin"]').text();
-            const terr = spanWords.slice(spanWords.split('at')[0].length + 3).trim();
-            const terrID = (await database.getTerritoryByName(gameId, terr)).ID;
-            let finder = new PathFinding(database, agent, url, gameId, terrID, countryID, spanWords.split(' ')[1].trim());
-            await finder.init(true);
-            supplies.push(await finder.findClosestSupply(terrID, countryID));
-            console.log(supplies);
-            //   const moveToID = await finder.findPath();
-            // console.log(`the AI will try to move the ${spanWords.split(' ')[1].trim()} at ${terr} to ID:${moveToID}, name:${(await database.getTerritoryByID(gameId, moveToID)).name}`);
+        let resolved = 0;
+        await new Promise(resolve => {
+            $('table.orders td[class="order"]').each(async function (index) {
+                let tr = $(this);
+                const spanWords = tr.children('div').children('span[class="orderSegment orderBegin"]').text();
+                const terr = spanWords.slice(spanWords.split('at')[0].length + 3).trim();
+                const terrID = (await database.getTerritoryByName(gameId, terr)).ID;
+                let finder = new PathFinding(database, agent, url, gameId, terrID, -countryID, spanWords.split(' ')[1].trim());
+                await finder.init(true);
+                await finder.findClosestSupply(terrID, countryID).then((object) => {
+                    supplies.push(object);
+                    resolved++;
+                    if (resolved === orderLength) {
+                        resolve();
+                    }
+                });
+                //   const moveToID = await finder.findPath();
+                // console.log(`the AI will try to move the ${spanWords.split(' ')[1].trim()} at ${terr} to ID:${moveToID}, name:${(await database.getTerritoryByID(gameId, moveToID)).name}`);
+            });
         });
+        console.log(supplies);
     }
 };
