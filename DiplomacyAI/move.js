@@ -269,33 +269,30 @@ module.exports = {
 
 
     async makeMove(site, gameId, page) {
-        //const $ = cheerio.load(site);
-        // countryID = $('span[class*="memberYourCountry"]').attr('class').split(' ')[0].substr(-1);
-        //const orderLength = $('table.orders tbody').children().length;
-        let supplies = require('./MultiArrayDataSet.json');
+        const $ = cheerio.load(site);
+        countryID = $('span[class*="memberYourCountry"]').attr('class').split(' ')[0].substr(-1);
+        const orderLength = $('table.orders tbody').children().length;
+        let supplies = [];
         let resolved = 0;
-        //await new Promise(resolve => {
-        //    $('table.orders td[class="order"]').each(async function (index) {
-        //        let tr = $(this);
-        //        const spanWords = tr.children('div').children('span[class="orderSegment orderBegin"]').text();
-        //        const terr = spanWords.slice(spanWords.split('at')[0].length + 3).trim();
-        //        const terrID = (await database.getTerritoryByName(gameId, terr)).ID;
-        //        let finder = new PathFinding(database, agent, url, gameId, terrID, -countryID, spanWords.split(' ')[1].trim());
-        //        await finder.init(true);
-        //        await finder.findClosestSupply(terrID, countryID, index).then((object) => {
-        //            //supplies = supplies.concat(object);
-        //            supplies[index] = object;
-        //            resolved++;
-        //            if (resolved === orderLength) {
-        //                resolve();
-        //            }
-        //        });
-        //        //   const moveToID = await finder.findPath();
-        //        // console.log(`the AI will try to move the ${spanWords.split(' ')[1].trim()} at ${terr} to ID:${moveToID}, name:${(await database.getTerritoryByID(gameId, moveToID)).name}`);
-        //    });
-        //});
-        //supplies = supplies.sort((a, b) => { return a.distance - b.distance; });
-        //console.log(supplies);
-        extract(supplies, 1);
+        await new Promise(resolve => {
+            $('table.orders td[class="order"]').each(async function (index) {
+                let tr = $(this);
+                const spanWords = tr.children('div').children('span[class="orderSegment orderBegin"]').text();
+                const terr = spanWords.slice(spanWords.split('at')[0].length + 3).trim();
+                const terrID = (await database.getTerritoryByName(gameId, terr)).ID;
+                let finder = new PathFinding(database, agent, url, gameId, terrID, -countryID, spanWords.split(' ')[1].trim());
+                await finder.init(true);
+                await finder.findClosestSupply(terrID, countryID, index).then((object) => {
+                    //supplies = supplies.concat(object);
+                    supplies[index] = object;
+                    resolved++;
+                    if (resolved === orderLength) {
+                        resolve();
+                    }
+                });
+            });
+        });
+        supplies = supplies.sort((a, b) => { return a.distance - b.distance; });
+        supplies = extract(supplies, 1);
     }
 };

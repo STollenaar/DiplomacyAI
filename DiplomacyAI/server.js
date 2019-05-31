@@ -47,7 +47,7 @@ let site;
 
 
 
-input.addListener("data",async function (d) {
+input.addListener("data", async function (d) {
     d = d.toString().trim().split(" ");
 
     switch (d[0]) {
@@ -93,8 +93,7 @@ input.addListener("data",async function (d) {
             break;
 
         case "checkMove":
-            // move.canMakeMoves();
-            move.makeMove();
+            move.canMakeMoves();
             break;
 
         case "addGame":
@@ -106,11 +105,11 @@ input.addListener("data",async function (d) {
             break;
 
         case "path":
-            let finder = await new PathFinding(database,agent,url, d[1], d[2], d[3], d[4]);
+            let finder = await new PathFinding(database, agent, url, d[1], d[2], d[3], d[4]);
             console.log("Starting search");
             console.log(await finder.findPath());
             break;
-        
+
     }
 
 });
