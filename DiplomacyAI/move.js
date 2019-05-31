@@ -13,9 +13,9 @@ let tries = 0;
 
 //extracting the best possible choices for each unit to make to get to the closest supply depot
 const extract = (array, startIndex) => {
-    let maxRow = array.map(row => Math.max.apply(Math, row.map(function (o) { return o.distance; })));
-    let maxD = Math.max.apply(Math, maxRow.map(function (o) { return o; }));
-    let maxI = array.length;
+    let maxRow = array.map(row => Math.max.apply(Math, row.map(function (o) { return o.distance; }))); //row with the highest distance in it
+    let maxD = Math.max.apply(Math, maxRow.map(function (o) { return o; })); //highest total distance
+    let maxI = array.length; //amount of indexes I need to work with and need results for
 
     let results = [];
     for (let i = startIndex; i <= maxD; i++) {
@@ -48,51 +48,33 @@ const extract = (array, startIndex) => {
         counted = Object.keys(counted).map(e => { return { "name": e, "value": counted[e] }; });
         let resDupTotal = [];
 
+        //going over every grouped duplicate and finding the best combination possible
         for (let dup of counted) {
             for (let d = 0; d < dup.value; d++) {
                 let objectCopy = objects;
+                //getting a duplicate from the array
                 let grabbedDup = _.flatten(objectCopy).filter(e => e.name.split('(')[0].trim() === dup.name)[d];
-                //filtering out other duplicates
+                //filtering out other duplicates, same as with the normal xor above
                 objectCopy.forEach((value, index) => objectCopy[index] = value.filter(a => a.index === grabbedDup.index || a.name.split('(')[0].trim() === grabbedDup.name.split('(')[0].trim()));
                 objectCopy = objectCopy.filter(e => e.length !== 0);
                 let xorDub = _.xorBy(...objectCopy, (e) => e.name.split('(')[0].trim());
-
+                //grouping the duplicates
+                let countedXor = _.countBy(_.flatten(xorDub), e => e.index);
+                countedXor = Object.keys(countedXor).map(e => { return { "index": parseInt(e), "value": parseInt(countedXor[e]) }; }).filter(e => e.value > 1);
+                //removing any duplicate indexes just in case same as above
+                countedXor.forEach(e => {
+                    let xorFil = xorDub.filter(a => a.index === e.index);
+                    while (e.value > 1) {
+                        let objectToRemove = xorFil[Math.floor(Math.random() * Math.floor(xorFil.length))];
+                        xorDub = xorDub.filter(a => a.id !== objectToRemove.id);
+                        xorFil = xorDub.filter(a => a.id !== objectToRemove.id);
+                        e.value--;
+                    }
+                });
+                //seeing if this results in the duplicate filtering being done
                 if (xorDub.length + results.length + 1 === maxI) {
                     let totalD = xorDub.reduce((tot, e) => tot + e.distance, 0);
                     resDupTotal.push({ 'totalD': totalD, 'entries': xorDub.push(grabbedDup) });
-                } else if (xorDub.length + results.length + 1 > maxI) {
-                    //removing any duplicate indexes just in case
-                    let countedXor = _.countBy(_.flatten(xorDub), e => e.index);
-                    countedXor = Object.keys(countedXor).map(e => { return { "index": parseInt(e), "value": counted[e] }; }).filter(e => e.value > 1);
-                    countedXor.forEach(e => {
-                        let xorFil = xorDub.filter(a => a.index === e.index);
-                        while (e.value > 1) {
-                            let objectToRemove = xorFil[Math.floor(Math.random() * Math.floor(xorFil.length))];
-                            _.pullAllBy(xorDub, objectToRemove.id, (b) => b.id);
-                            e.value--;
-                        }
-                    });
-                    if (xorDub.length + results.length + 1 === maxI) {
-                        let totalD = xorDub.reduce((tot, e) => tot + e.distance, 0);
-                        resDupTotal.push({ 'totalD': parseInt(totalD), 'entries': xorDub.push(grabbedDup) });
-                    } else {
-                        //removing from array all results, xorDub and grabbedDub
-                        let nextA = [];
-                        array.forEach((value, index) => nextA[index] = value.filter(a =>
-                            grabbedDup.name.split('(')[0].trim() !== a.name.split('(')[0].trim()
-                            && grabbedDup.index !== a.index
-                            && !results.map(o => o.index).includes(a.index)
-                            && !results.map(o => o.name.split('(')[0].trim()).includes(a.name.split('(')[0].trim())
-                            && !xorDub.map(o => o.index).includes(a.index)
-                            && !xorDub.map(o => o.name.split('(')[0].trim()).includes(a.name.split('(')[0].trim())));
-                        nextA = nextA.filter(e => e.length !== 0);
-
-                        let recursionEnd = extract(nextA, startIndex + 1);
-                        let totalD = recursionEnd.reduce((tot, e) => tot + e.distance, 0) + xorDub.reduce((tot, e) => tot + e.distance, 0);
-                        //adding it all together
-                        xorDub.push(grabbedDup);
-                        resDupTotal.push({ 'totalD': parseInt(totalD), 'entries': recursionEnd.concat(xorDub) });
-                    }
                 } else {
                     //removing from array all results, xorDub and grabbedDub
                     let nextA = [];
@@ -105,6 +87,7 @@ const extract = (array, startIndex) => {
                         && !xorDub.map(o => o.name.split('(')[0].trim()).includes(a.name.split('(')[0].trim())));
                     nextA = nextA.filter(e => e.length !== 0);
 
+                    //going recursive
                     let recursionEnd = extract(nextA, startIndex + 1);
                     let totalD = recursionEnd.reduce((tot, e) => tot + e.distance, 0) + xorDub.reduce((tot, e) => tot + e.distance, 0);
                     //adding it all together
