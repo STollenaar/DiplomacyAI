@@ -93,7 +93,8 @@ input.addListener("data",async function (d) {
             break;
 
         case "checkMove":
-            move.canMakeMoves();
+            // move.canMakeMoves();
+            move.makeMove();
             break;
 
         case "addGame":

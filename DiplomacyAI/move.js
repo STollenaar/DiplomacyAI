@@ -11,50 +11,116 @@ let database;
 let site;
 let tries = 0;
 
+//extracting the best possible choices for each unit to make to get to the closest supply depot
+const extract = (array, startIndex) => {
+    let maxRow = array.map(row => Math.max.apply(Math, row.map(function (o) { return o.distance; })));
+    let maxD = Math.max.apply(Math, maxRow.map(function (o) { return o; }));
+    let maxI = array.length;
 
-//const sortingFunction = {
-//    '1': (a, b) => {
-//        a =
-//            b = b.name.split('(')[0].trim();
-//        return a === b ? 1 : 0;
-//    },
-//    '0': (a, b) => {
-//        return a.distance - b.distance;
-//    },
-//    '2': (a, b) => {
-//        return a.index - b.index;
-//    }
-//};
-
-
-//const sequence = (array) => {
-//    let groups = Object.create(null),
-//        result = array
-//            .map(function (a, i) {
-//                return { index: i, group: (groups[a.index] = groups[a.index] || []).push(a) };
-//            })
-//            .sort(function (a, b) {
-//                return a.group - b.group || a.index - b.index;
-//            })
-//            .map(function (o) {
-//                return array[o.index];
-//            });
-//    return result;
-//};
-
-//const unique = (value, index, self) => {
-//    return self.indexOf(value.name.split('(')[0]) === index;
-//}
-
-const extract = (array) => {
-    let maxD = Math.max.apply(Math, array.map(function (o) { return o.distance; }));
-    let maxI = Math.max.apply(Math, array.map(function (o) { return o.index; }));
     let results = [];
-    for (let i = 1; i <= maxD; i++) {
-        let objects = array.filter(a => a.distance === i);
-        let firstPass = _.uniqBy(objects, (e) => { return [e.name.split('(')[0].trim(), e.index]; });
+    for (let i = startIndex; i <= maxD; i++) {
+        let objects = [];
+        //dumps the current distance in the array without including already found indexes
+        array.forEach((value, index) => objects[index] = value.filter(a => a.distance === i && !results.map(o => o.index).includes(a.index)));
+        //getting every unique value at the current distance and adding that in the results
+        let xor = _.xorBy(...objects, (e) => e.name.split('(')[0].trim());
+        //grouping the duplicates
+        let countedXor = _.countBy(_.flatten(xor), e => e.index);
+        countedXor = Object.keys(countedXor).map(e => { return { "index": parseInt(e), "value": parseInt(countedXor[e]) }; }).filter(e => e.value > 1);
+        //removing any duplicate indexes just in case
+        countedXor.forEach(e => {
+            let xorFil = xor.filter(a => a.index === e.index);
+            while (e.value > 1) {
+                let objectToRemove = xorFil[Math.floor(Math.random() * Math.floor(xorFil.length))];
+                xor = xor.filter(a => a.id !== objectToRemove.id);
+                xorFil = xor.filter(a => a.id !== objectToRemove.id);
+                e.value--;
+            }
+        });
+        results = results.concat(xor);
 
-        console.log(objects);
+        //maybe set this in a loop such that the result slowly gets filled?
+        objects.forEach((value, index) => objects[index] = value.filter(a => !results.map(o => o.index).includes(a.index)));
+        objects = objects.filter(e => e.length !== 0);
+
+        //grouping the duplicates
+        let counted = _.countBy(_.flatten(objects), e => e.name.split('(')[0].trim());
+        counted = Object.keys(counted).map(e => { return { "name": e, "value": counted[e] }; });
+        let resDupTotal = [];
+
+        for (let dup of counted) {
+            for (let d = 0; d < dup.value; d++) {
+                let objectCopy = objects;
+                let grabbedDup = _.flatten(objectCopy).filter(e => e.name.split('(')[0].trim() === dup.name)[d];
+                //filtering out other duplicates
+                objectCopy.forEach((value, index) => objectCopy[index] = value.filter(a => a.index === grabbedDup.index || a.name.split('(')[0].trim() === grabbedDup.name.split('(')[0].trim()));
+                objectCopy = objectCopy.filter(e => e.length !== 0);
+                let xorDub = _.xorBy(...objectCopy, (e) => e.name.split('(')[0].trim());
+
+                if (xorDub.length + results.length + 1 === maxI) {
+                    let totalD = xorDub.reduce((tot, e) => tot + e.distance, 0);
+                    resDupTotal.push({ 'totalD': totalD, 'entries': xorDub.push(grabbedDup) });
+                } else if (xorDub.length + results.length + 1 > maxI) {
+                    //removing any duplicate indexes just in case
+                    let countedXor = _.countBy(_.flatten(xorDub), e => e.index);
+                    countedXor = Object.keys(countedXor).map(e => { return { "index": parseInt(e), "value": counted[e] }; }).filter(e => e.value > 1);
+                    countedXor.forEach(e => {
+                        let xorFil = xorDub.filter(a => a.index === e.index);
+                        while (e.value > 1) {
+                            let objectToRemove = xorFil[Math.floor(Math.random() * Math.floor(xorFil.length))];
+                            _.pullAllBy(xorDub, objectToRemove.id, (b) => b.id);
+                            e.value--;
+                        }
+                    });
+                    if (xorDub.length + results.length + 1 === maxI) {
+                        let totalD = xorDub.reduce((tot, e) => tot + e.distance, 0);
+                        resDupTotal.push({ 'totalD': parseInt(totalD), 'entries': xorDub.push(grabbedDup) });
+                    } else {
+                        //removing from array all results, xorDub and grabbedDub
+                        let nextA = [];
+                        array.forEach((value, index) => nextA[index] = value.filter(a =>
+                            grabbedDup.name.split('(')[0].trim() !== a.name.split('(')[0].trim()
+                            && grabbedDup.index !== a.index
+                            && !results.map(o => o.index).includes(a.index)
+                            && !results.map(o => o.name.split('(')[0].trim()).includes(a.name.split('(')[0].trim())
+                            && !xorDub.map(o => o.index).includes(a.index)
+                            && !xorDub.map(o => o.name.split('(')[0].trim()).includes(a.name.split('(')[0].trim())));
+                        nextA = nextA.filter(e => e.length !== 0);
+
+                        let recursionEnd = extract(nextA, startIndex + 1);
+                        let totalD = recursionEnd.reduce((tot, e) => tot + e.distance, 0) + xorDub.reduce((tot, e) => tot + e.distance, 0);
+                        //adding it all together
+                        xorDub.push(grabbedDup);
+                        resDupTotal.push({ 'totalD': parseInt(totalD), 'entries': recursionEnd.concat(xorDub) });
+                    }
+                } else {
+                    //removing from array all results, xorDub and grabbedDub
+                    let nextA = [];
+                    array.forEach((value, index) => nextA[index] = value.filter(a =>
+                        grabbedDup.name.split('(')[0].trim() !== a.name.split('(')[0].trim()
+                        && grabbedDup.index !== a.index
+                        && !results.map(o => o.index).includes(a.index)
+                        && !results.map(o => o.name.split('(')[0].trim()).includes(a.name.split('(')[0].trim())
+                        && !xorDub.map(o => o.index).includes(a.index)
+                        && !xorDub.map(o => o.name.split('(')[0].trim()).includes(a.name.split('(')[0].trim())));
+                    nextA = nextA.filter(e => e.length !== 0);
+
+                    let recursionEnd = extract(nextA, startIndex + 1);
+                    let totalD = recursionEnd.reduce((tot, e) => tot + e.distance, 0) + xorDub.reduce((tot, e) => tot + e.distance, 0);
+                    //adding it all together
+                    xorDub.push(grabbedDup);
+                    resDupTotal.push({ 'totalD': parseInt(totalD), 'entries': recursionEnd.concat(xorDub) });
+                }
+            }
+        }
+        //finished the results with the duplicates
+        if (resDupTotal.length > 0) {
+            //sorting the results of the duplicates and adding to the normal result list
+            results = results.concat(resDupTotal.sort((a, b) => a.totalD - b.totalD)[0].entries);
+        }
+        console.log("RESULTS");
+        console.log(results);
+        return results;
     }
 };
 
@@ -220,32 +286,33 @@ module.exports = {
 
 
     async makeMove(site, gameId, page) {
-        const $ = cheerio.load(site);
-        const countryID = $('span[class*="memberYourCountry"]').attr('class').split(' ')[0].substr(-1);
-        const orderLength = $('table.orders tbody').children().length;
-        let supplies = [];
+        //const $ = cheerio.load(site);
+        // countryID = $('span[class*="memberYourCountry"]').attr('class').split(' ')[0].substr(-1);
+        //const orderLength = $('table.orders tbody').children().length;
+        let supplies = require('./MultiArrayDataSet.json');
         let resolved = 0;
-        await new Promise(resolve => {
-            $('table.orders td[class="order"]').each(async function (index) {
-                let tr = $(this);
-                const spanWords = tr.children('div').children('span[class="orderSegment orderBegin"]').text();
-                const terr = spanWords.slice(spanWords.split('at')[0].length + 3).trim();
-                const terrID = (await database.getTerritoryByName(gameId, terr)).ID;
-                let finder = new PathFinding(database, agent, url, gameId, terrID, -countryID, spanWords.split(' ')[1].trim());
-                await finder.init(true);
-                await finder.findClosestSupply(terrID, countryID, index).then((object) => {
-                    supplies = supplies.concat(object);
-                    resolved++;
-                    if (resolved === orderLength) {
-                        resolve();
-                    }
-                });
-                //   const moveToID = await finder.findPath();
-                // console.log(`the AI will try to move the ${spanWords.split(' ')[1].trim()} at ${terr} to ID:${moveToID}, name:${(await database.getTerritoryByID(gameId, moveToID)).name}`);
-            });
-        });
-        supplies = supplies.sort((a, b) => { return a.distance - b.distance; });
+        //await new Promise(resolve => {
+        //    $('table.orders td[class="order"]').each(async function (index) {
+        //        let tr = $(this);
+        //        const spanWords = tr.children('div').children('span[class="orderSegment orderBegin"]').text();
+        //        const terr = spanWords.slice(spanWords.split('at')[0].length + 3).trim();
+        //        const terrID = (await database.getTerritoryByName(gameId, terr)).ID;
+        //        let finder = new PathFinding(database, agent, url, gameId, terrID, -countryID, spanWords.split(' ')[1].trim());
+        //        await finder.init(true);
+        //        await finder.findClosestSupply(terrID, countryID, index).then((object) => {
+        //            //supplies = supplies.concat(object);
+        //            supplies[index] = object;
+        //            resolved++;
+        //            if (resolved === orderLength) {
+        //                resolve();
+        //            }
+        //        });
+        //        //   const moveToID = await finder.findPath();
+        //        // console.log(`the AI will try to move the ${spanWords.split(' ')[1].trim()} at ${terr} to ID:${moveToID}, name:${(await database.getTerritoryByID(gameId, moveToID)).name}`);
+        //    });
+        //});
+        //supplies = supplies.sort((a, b) => { return a.distance - b.distance; });
         //console.log(supplies);
-        extract(supplies);
+        extract(supplies, 1);
     }
 };
