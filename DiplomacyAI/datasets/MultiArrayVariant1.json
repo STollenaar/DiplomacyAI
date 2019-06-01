@@ -1,0 +1,332 @@
+[
+  [
+    {
+      "id": 10,
+      "name": "Spain (South Coast)",
+      "distance": 1,
+      "index": 0
+    },
+    {
+      "id": 9,
+      "name": "Spain (North Coast)",
+      "distance": 1,
+      "index": 0
+    },
+    {
+      "id": 7,
+      "name": "Portugal",
+      "distance": 1,
+      "index": 0
+    },
+    {
+      "id": 12,
+      "name": "Tunis",
+      "distance": 2,
+      "index": 0
+    },
+    {
+      "id": 50,
+      "name": "Belgium",
+      "distance": 2,
+      "index": 0
+    },
+    {
+      "id": 6,
+      "name": "London",
+      "distance": 2,
+      "index": 0
+    },
+    {
+      "id": 3,
+      "name": "Liverpool",
+      "distance": 2,
+      "index": 0
+    },
+    {
+      "id": 14,
+      "name": "Rome",
+      "distance": 3,
+      "index": 0
+    },
+    {
+      "id": 13,
+      "name": "Naples",
+      "distance": 3,
+      "index": 0
+    },
+    {
+      "id": 49,
+      "name": "Holland",
+      "distance": 3,
+      "index": 0
+    },
+    {
+      "id": 42,
+      "name": "Denmark",
+      "distance": 3,
+      "index": 0
+    },
+    {
+      "id": 41,
+      "name": "Norway",
+      "distance": 3,
+      "index": 0
+    },
+    {
+      "id": 2,
+      "name": "Edinburgh",
+      "distance": 3,
+      "index": 0
+    },
+    {
+      "id": 19,
+      "name": "Greece",
+      "distance": 4,
+      "index": 0
+    },
+    {
+      "id": 43,
+      "name": "Kiel",
+      "distance": 4,
+      "index": 0
+    },
+    {
+      "id": 40,
+      "name": "Sweden",
+      "distance": 4,
+      "index": 0
+    },
+    {
+      "id": 37,
+      "name": "St. Petersburg (North Coast)",
+      "distance": 4,
+      "index": 0
+    },
+    {
+      "id": 27,
+      "name": "Smyrna",
+      "distance": 5,
+      "index": 0
+    },
+    {
+      "id": 24,
+      "name": "Bulgaria (South Coast)",
+      "distance": 5,
+      "index": 0
+    },
+    {
+      "id": 26,
+      "name": "Constantinople",
+      "distance": 5,
+      "index": 0
+    },
+    {
+      "id": 79,
+      "name": "Trieste",
+      "distance": 5,
+      "index": 0
+    },
+    {
+      "id": 17,
+      "name": "Venice",
+      "distance": 5,
+      "index": 0
+    }
+  ],
+  [
+    {
+      "id": 8,
+      "name": "Spain",
+      "distance": 1,
+      "index": 1
+    },
+    {
+      "id": 50,
+      "name": "Belgium",
+      "distance": 2,
+      "index": 1
+    },
+    {
+      "id": 47,
+      "name": "Munich",
+      "distance": 2,
+      "index": 1
+    },
+    {
+      "id": 17,
+      "name": "Venice",
+      "distance": 3,
+      "index": 1
+    },
+    {
+      "id": 49,
+      "name": "Holland",
+      "distance": 3,
+      "index": 1
+    },
+    {
+      "id": 43,
+      "name": "Kiel",
+      "distance": 3,
+      "index": 1
+    },
+    {
+      "id": 79,
+      "name": "Trieste",
+      "distance": 4,
+      "index": 1
+    },
+    {
+      "id": 78,
+      "name": "Vienna",
+      "distance": 4,
+      "index": 1
+    },
+    {
+      "id": 14,
+      "name": "Rome",
+      "distance": 4,
+      "index": 1
+    },
+    {
+      "id": 80,
+      "name": "Budapest",
+      "distance": 6,
+      "index": 1
+    },
+    {
+      "id": 33,
+      "name": "Warsaw",
+      "distance": 6,
+      "index": 1
+    },
+    {
+      "id": 25,
+      "name": "Rumania",
+      "distance": 6,
+      "index": 1
+    },
+    {
+      "id": 44,
+      "name": "Berlin",
+      "distance": 6,
+      "index": 1
+    },
+    {
+      "id": 35,
+      "name": "Moscow",
+      "distance": 7,
+      "index": 1
+    },
+    {
+      "id": 31,
+      "name": "Sevastopol",
+      "distance": 7,
+      "index": 1
+    },
+    {
+      "id": 36,
+      "name": "St. Petersburg",
+      "distance": 8,
+      "index": 1
+    }
+  ],
+  [
+    {
+      "id": 8,
+      "name": "Spain",
+      "distance": 1,
+      "index": 2
+    },
+    {
+      "id": 50,
+      "name": "Belgium",
+      "distance": 2,
+      "index": 2
+    },
+    {
+      "id": 47,
+      "name": "Munich",
+      "distance": 2,
+      "index": 2
+    },
+    {
+      "id": 17,
+      "name": "Venice",
+      "distance": 2,
+      "index": 2
+    },
+    {
+      "id": 49,
+      "name": "Holland",
+      "distance": 3,
+      "index": 2
+    },
+    {
+      "id": 43,
+      "name": "Kiel",
+      "distance": 3,
+      "index": 2
+    },
+    {
+      "id": 79,
+      "name": "Trieste",
+      "distance": 3,
+      "index": 2
+    },
+    {
+      "id": 78,
+      "name": "Vienna",
+      "distance": 3,
+      "index": 2
+    },
+    {
+      "id": 14,
+      "name": "Rome",
+      "distance": 3,
+      "index": 2
+    },
+    {
+      "id": 80,
+      "name": "Budapest",
+      "distance": 5,
+      "index": 2
+    },
+    {
+      "id": 33,
+      "name": "Warsaw",
+      "distance": 5,
+      "index": 2
+    },
+    {
+      "id": 25,
+      "name": "Rumania",
+      "distance": 5,
+      "index": 2
+    },
+    {
+      "id": 44,
+      "name": "Berlin",
+      "distance": 5,
+      "index": 2
+    },
+    {
+      "id": 35,
+      "name": "Moscow",
+      "distance": 6,
+      "index": 2
+    },
+    {
+      "id": 31,
+      "name": "Sevastopol",
+      "distance": 6,
+      "index": 2
+    },
+    {
+      "id": 36,
+      "name": "St. Petersburg",
+      "distance": 7,
+      "index": 2
+    }
+  ]
+]

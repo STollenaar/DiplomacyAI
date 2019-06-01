@@ -109,7 +109,13 @@ input.addListener("data", async function (d) {
             console.log("Starting search");
             console.log(await finder.findPath());
             break;
-
+        case "checkMoveDebug":
+            let supplies = require(`./datasets/${d[1]}.json`);
+            supplies = supplies.sort((a, b) => { return a.distance - b.distance; });
+            supplies = move.extract(supplies);
+            console.log("RESULTS");
+            console.log(supplies);
+            break;
     }
 
 });
