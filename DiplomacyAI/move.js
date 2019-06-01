@@ -12,13 +12,13 @@ let site;
 let tries = 0;
 
 //extracting the best possible choices for each unit to make to get to the closest supply depot
-const extract = (array, startIndex) => {
+const extract = (array) => {
     let maxRow = array.map(row => Math.max.apply(Math, row.map(function (o) { return o.distance; }))); //row with the highest distance in it
     let maxD = Math.max.apply(Math, maxRow.map(function (o) { return o; })); //highest total distance
     let maxI = array.length; //amount of indexes I need to work with and need results for
 
     let results = [];
-    for (let i = startIndex; i <= maxD; i++) {
+    for (let i = 1; i <= maxD; i++) {
         let objects = [];
         //dumps the current distance in the array without including already found indexes
         array.forEach((value, index) => objects[index] = value.filter(a => a.distance === i && !results.map(o => o.index).includes(a.index)));
@@ -57,42 +57,44 @@ const extract = (array, startIndex) => {
                 //filtering out other duplicates, same as with the normal xor above
                 objectCopy.forEach((value, index) => objectCopy[index] = value.filter(a => a.index === grabbedDup.index || a.name.split('(')[0].trim() === grabbedDup.name.split('(')[0].trim()));
                 objectCopy = objectCopy.filter(e => e.length !== 0);
-                let xorDub = _.xorBy(...objectCopy, (e) => e.name.split('(')[0].trim());
+                let xorDup = _.xorBy(...objectCopy, (e) => e.name.split('(')[0].trim());
                 //grouping the duplicates
-                let countedXor = _.countBy(_.flatten(xorDub), e => e.index);
+                let countedXor = _.countBy(_.flatten(xorDup), e => e.index);
                 countedXor = Object.keys(countedXor).map(e => { return { "index": parseInt(e), "value": parseInt(countedXor[e]) }; }).filter(e => e.value > 1);
+
                 //removing any duplicate indexes just in case same as above
                 countedXor.forEach(e => {
-                    let xorFil = xorDub.filter(a => a.index === e.index);
+                    let xorFil = xorDup.filter(a => a.index === e.index);
                     while (e.value > 1) {
                         let objectToRemove = xorFil[Math.floor(Math.random() * Math.floor(xorFil.length))];
-                        xorDub = xorDub.filter(a => a.id !== objectToRemove.id);
-                        xorFil = xorDub.filter(a => a.id !== objectToRemove.id);
+                        xorDup = xorDup.filter(a => a.id !== objectToRemove.id);
+                        xorFil = xorDup.filter(a => a.id !== objectToRemove.id);
                         e.value--;
                     }
                 });
+
                 //seeing if this results in the duplicate filtering being done
-                if (xorDub.length + results.length + 1 === maxI) {
-                    let totalD = xorDub.reduce((tot, e) => tot + e.distance, 0);
-                    resDupTotal.push({ 'totalD': totalD, 'entries': xorDub.push(grabbedDup) });
+                if (xorDup.length + results.length + 1 === maxI) {
+                    let totalD = xorDup.reduce((tot, e) => tot + e.distance, 0);
+                    resDupTotal.push({ 'totalD': totalD, 'entries': xorDup.push(grabbedDup) });
                 } else {
-                    //removing from array all results, xorDub and grabbedDub
+                    //removing from array all results, xorDup and grabbedDub
                     let nextA = [];
                     array.forEach((value, index) => nextA[index] = value.filter(a =>
                         grabbedDup.name.split('(')[0].trim() !== a.name.split('(')[0].trim()
                         && grabbedDup.index !== a.index
                         && !results.map(o => o.index).includes(a.index)
                         && !results.map(o => o.name.split('(')[0].trim()).includes(a.name.split('(')[0].trim())
-                        && !xorDub.map(o => o.index).includes(a.index)
-                        && !xorDub.map(o => o.name.split('(')[0].trim()).includes(a.name.split('(')[0].trim())));
+                        && !xorDup.map(o => o.index).includes(a.index)
+                        && !xorDup.map(o => o.name.split('(')[0].trim()).includes(a.name.split('(')[0].trim())));
                     nextA = nextA.filter(e => e.length !== 0);
 
                     //going recursive
-                    let recursionEnd = extract(nextA, startIndex + 1);
-                    let totalD = recursionEnd.reduce((tot, e) => tot + e.distance, 0) + xorDub.reduce((tot, e) => tot + e.distance, 0);
+                    let recursionEnd = extract(nextA);
+                    let totalD = recursionEnd.reduce((tot, e) => tot + e.distance, 0) + xorDup.reduce((tot, e) => tot + e.distance, 0);
                     //adding it all together
-                    xorDub.push(grabbedDup);
-                    resDupTotal.push({ 'totalD': parseInt(totalD), 'entries': recursionEnd.concat(xorDub) });
+                    xorDup.push(grabbedDup);
+                    resDupTotal.push({ 'totalD': parseInt(totalD), 'entries': recursionEnd.concat(xorDup) });
                 }
             }
         }
@@ -101,9 +103,13 @@ const extract = (array, startIndex) => {
             //sorting the results of the duplicates and adding to the normal result list
             results = results.concat(resDupTotal.sort((a, b) => a.totalD - b.totalD)[0].entries);
         }
-        console.log("RESULTS");
-        console.log(results);
-        return results;
+
+        //checking if done and returning is so
+        if (results.length === maxI) {
+            console.log("RESULTS");
+            console.log(results);
+            return results;
+        }
     }
 };
 
@@ -293,6 +299,6 @@ module.exports = {
             });
         });
         supplies = supplies.sort((a, b) => { return a.distance - b.distance; });
-        supplies = extract(supplies, 1);
+        supplies = extract(supplies);
     }
 };
