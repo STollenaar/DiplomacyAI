@@ -1,4 +1,7 @@
-﻿let agent;
+﻿const CookieAccess = require('cookiejar').CookieAccessInfo;
+const puppeteer = require('puppeteer');
+
+let agent;
 let cheerio;
 let url;
 let games = [];
@@ -72,5 +75,26 @@ module.exports = {
             });
 
         });
+    },
+
+    async peek(gameId) {
+        const access = CookieAccess(
+            url.hostname,
+            url.pathname,
+            'https:' === url.protocol
+        );
+
+
+        const browser = await puppeteer.launch({ headless: false });
+        const page = await browser.newPage();
+
+        for (let cookies in agent.jar.getCookies(access)) {
+            cookies = agent.jar.getCookies(access)[cookies];
+            if (cookies !== undefined && cookies.value !== undefined) {
+                cookies.url = url;
+                await page.setCookie(cookies);
+            }
+        }
+        await page.goto(`${url}board.php?gameID=${gameId}`, { "waitUntil": "load" });
     }
 };

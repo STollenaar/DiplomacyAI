@@ -93,7 +93,7 @@ input.addListener("data", async function (d) {
             break;
 
         case "checkMove":
-            move.canMakeMoves();
+            move.canMakeMoves(d[1]);
             break;
 
         case "addGame":
@@ -101,7 +101,7 @@ input.addListener("data", async function (d) {
             break;
 
         case "peek":
-            move.peek(d[1]);
+            state.peek(d[1]);
             break;
 
         case "path":

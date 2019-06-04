@@ -28,18 +28,18 @@ module.exports = {
         games = g;
     },
 
-    async canMakeMoves() {
+    async canMakeMoves(debug) {
         tries = 0;
         console.log(games);
         const browser = await puppeteer.launch();
         for (gameID in games) {
-            await this.checkMove(games[gameID].bigId, browser);
+            await this.checkMove(games[gameID].bigId, browser, debug);
         }
         console.log("Done checking games");
         // await browser.close();
     },
 
-    async checkMove(gameId, browser) {
+    async checkMove(gameId, browser, debug) {
         const access = CookieAccess(
             url.hostname,
             url.pathname,
@@ -62,8 +62,9 @@ module.exports = {
             const html = await page.content();
             const $ = cheerio.load(html);
             if ($('div.memberUserDetail').text().includes('No orders submitted!') || $('div.memberUserDetail').text().includes('but not ready for next turn')) {
-                //await module.exports.makeRandomMove(html, page);
-                await module.exports.makeMove(html, gameId, page);
+                if (await module.exports.makeMove(html, gameId, page, debug)) {
+                    await module.exports.makeRandomMove(html, page);
+                }
             }
         });
     },
@@ -150,29 +151,8 @@ module.exports = {
 
     },
 
-    async peek(gameId) {
-        const access = CookieAccess(
-            url.hostname,
-            url.pathname,
-            'https:' === url.protocol
-        );
 
-
-        const browser = await puppeteer.launch({ headless: false });
-        const page = await browser.newPage();
-
-        for (let cookies in agent.jar.getCookies(access)) {
-            cookies = agent.jar.getCookies(access)[cookies];
-            if (cookies !== undefined && cookies.value !== undefined) {
-                cookies.url = url;
-                await page.setCookie(cookies);
-            }
-        }
-        await page.goto(`${url}board.php?gameID=${gameId}`, { "waitUntil": "load" });
-    },
-
-
-    async makeMove(site, gameId, page) {
+    async makeMove(site, gameId, page, debug) {
         const $ = cheerio.load(site);
         countryID = $('span[class*="memberYourCountry"]').attr('class').split(' ')[0].substr(-1);
         const orderLength = $('table.orders tbody').children().length;
@@ -196,10 +176,28 @@ module.exports = {
             });
         });
         supplies = supplies.sort((a, b) => { return a.distance - b.distance; });
+        if (debug) {
+            module.exports.saveDataSet(supplies);
+        }
         supplies = module.exports.extract(supplies);
         console.log("RESULTS");
         console.log(supplies);
+
+        return supplies.length === 0;
     },
+
+    saveDataSet(dataSet) {
+        const fs = require('fs');
+        fs.readdir('./datasets/', (err, files) => {
+            let name = files.sort((a, b) => parseInt(b.split('t')[1].split('.')[0]) - parseInt(a.split('t')[1].split('.')[0]))[0];
+            name = parseInt(name.split('t')[1].split('.')[0]);
+            name++;
+            let json = JSON.stringify(dataSet);
+            fs.writeFile(`./datasets/Variant${name}.json`, json, 'utf8');
+        });
+
+    },
+
 
     //extracting the best possible choices for each unit to make to get to the closest supply depot
     extract(array) {
