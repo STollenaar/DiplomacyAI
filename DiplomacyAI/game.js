@@ -1,10 +1,13 @@
 ﻿const CookieAccess = require('cookiejar').CookieAccessInfo;
 const puppeteer = require('puppeteer');
+const cheerio = require('cheerio');
+const move = require('./move');
 
 let url;
 let agent;
 let database;
 let config;
+let browser;
 
 module.exports = {
     //adding game data to the db
@@ -14,15 +17,17 @@ module.exports = {
         agent = a;
         database = d;
         config = c;
+
+        move.init(u, a, cheerio, d);
     },
 
     async gameCheck(games) {
 
-        const browser = await puppeteer.launch();
+        browser = await puppeteer.launch();
 
-        let gam = await database.getGames(config.Username);
+        let gam = (await database.getGames(config.Username)).map(e => e.gameID);
         games.forEach(g => {
-            if (!gam.includes(g.bigId)) {
+            if (!gam.includes(parseInt(g.bigId))) {
                 console.log(`Found new game ${g.bigId} adding to database`);
                 database.addGame(config.Username, g.bigId);
                 this.gameAdding(g.bigId, browser);
@@ -37,7 +42,7 @@ module.exports = {
             'https:' === url.protocol
         );
         const page = await browser.newPage();
-        
+
         //cooking inserting
         for (let cookies in agent.jar.getCookies(access)) {
             cookies = agent.jar.getCookies(access)[cookies];
@@ -97,6 +102,47 @@ module.exports = {
             }
             console.log(`Done parsing data for new game ${Id}`);
         });
+        await page.close();
+    },
+
+    async canMakeMoves(debug) {
+        tries = 0;
+        console.log(games);
+
+        for (gameID in games) {
+            await this.checkMove(games[gameID].bigId, browser, debug);
+        }
+        console.log("Done checking games");
+        // await browser.close();
+    },
+
+    async checkMove(gameId, browser, debug) {
+        const access = CookieAccess(
+            url.hostname,
+            url.pathname,
+            'https:' === url.protocol
+        );
+
+        const page = await browser.newPage();
+
+        for (let cookies in agent.jar.getCookies(access)) {
+            cookies = agent.jar.getCookies(access)[cookies];
+            if (cookies !== undefined && cookies.value !== undefined) {
+                cookies.url = url;
+                await page.setCookie(cookies);
+            }
+        }
+        await page.goto(`${url}board.php?gameID=${gameId}`, { "waitUntil": "load" }).then(async function () {
+
+            const html = await page.content();
+            const $ = cheerio.load(html);
+            if ($('div.memberUserDetail').text().includes('No orders submitted!') || $('div.memberUserDetail').text().includes('but not ready for next turn')) {
+                if (await move.makeMove(html, gameId, page, debug)) {
+                    await move.makeRandomMove(html, page);
+                }
+            }
+        });
+
         await page.close();
     }
 };

@@ -26,7 +26,7 @@ module.exports = {
     getGames(user) {
         return new Promise(function (resolve, reject) {
             db.serialize(function () {
-                db.all(`SELECT * FROM games WHERE 'username'='${user}';`, (err, rows) => {
+                db.all(`SELECT gameID FROM games WHERE username='${user}';`, (err, rows) => {
                     resolve(rows);
                 });
             });

@@ -6,10 +6,8 @@ const _ = require('lodash');
 let agent;
 let cheerio;
 let url;
-let games = [];
 let database;
-let site;
-let tries = 0;
+
 
 
 module.exports = {
@@ -22,54 +20,6 @@ module.exports = {
 
     updateSite(s) {
         site = s;
-    },
-
-    updateGames(g) {
-        games = g;
-    },
-
-    async canMakeMoves(debug) {
-        tries = 0;
-        console.log(games);
-        const browser = await puppeteer.launch();
-        this.browserWSEndpoint = browser.wsEndpoint();
-        for (gameID in games) {
-            await this.checkMove(games[gameID].bigId, browser, debug);
-        }
-        console.log("Done checking games");
-        // await browser.close();
-    },
-
-    async checkMove(gameId, browser, debug) {
-        const access = CookieAccess(
-            url.hostname,
-            url.pathname,
-            'https:' === url.protocol
-        );
-
-
-
-        const page = await browser.newPage();
-
-        for (let cookies in agent.jar.getCookies(access)) {
-            cookies = agent.jar.getCookies(access)[cookies];
-            if (cookies !== undefined && cookies.value !== undefined) {
-                cookies.url = url;
-                await page.setCookie(cookies);
-            }
-        }
-        await page.goto(`${url}board.php?gameID=${gameId}`, { "waitUntil": "load" }).then(async function () {
-
-            const html = await page.content();
-            const $ = cheerio.load(html);
-            if ($('div.memberUserDetail').text().includes('No orders submitted!') || $('div.memberUserDetail').text().includes('but not ready for next turn')) {
-                if (await module.exports.makeMove(html, gameId, page, debug)) {
-                    await module.exports.makeRandomMove(html, page);
-                }
-            }
-        });
-
-        await page.close();
     },
 
     async makeRandomMove(site, page) {
@@ -154,7 +104,6 @@ module.exports = {
 
     },
 
-
     async makeMove(site, gameId, page, debug) {
         const $ = cheerio.load(site);
         countryID = $('span[class*="memberYourCountry"]').attr('class').split(' ')[0].substr(-1);
@@ -206,7 +155,7 @@ module.exports = {
                 });
             });
             await page.$eval('input[name="Ready"]', b => b.click());
-            //await page.close();
+            await page.close();
         }
         return supplies.length === 0;
     },

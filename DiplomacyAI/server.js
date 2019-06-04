@@ -5,7 +5,7 @@ const database = require('./database');
 const state = require('./state');
 const game = require('./game');
 const pathFinding = require('./pathFinding');
-const move = require('./move');
+
 
 let url;
 let config;
@@ -16,8 +16,7 @@ fs.stat('./config.json', function (err, stat) {
         config = require('./config.json')[0];
         url = config.Site;
 
-        move.init(url, agent, cheerio, database);
-        state.init(url, agent, cheerio, move);
+        state.init(url, agent, cheerio);
         game.init(url, agent, database, config);
         login();
     } else if (err.code === 'ENOENT') {
@@ -26,7 +25,6 @@ fs.stat('./config.json', function (err, stat) {
             config = require('./config.json')[0];
             url = config.Site;
 
-            move.init(url, agent, cheerio, database);
             state.init(url, agent, cheerio, move);
             game.init(url, agent, database, config);
         });
@@ -93,7 +91,7 @@ input.addListener("data", async function (d) {
             break;
 
         case "checkMove":
-            move.canMakeMoves(d[1]);
+            game.canMakeMoves(d[1]);
             break;
 
         case "peek":
@@ -129,7 +127,7 @@ function login() {
             printUser();
             let games = await state.gameFinder();
             game.gameCheck(games);
-            console.log(`Current active games: ${games}`);
+            console.log('Current active games: ', games);
         });
     });
 }

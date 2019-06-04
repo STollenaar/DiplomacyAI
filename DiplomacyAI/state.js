@@ -4,9 +4,7 @@ const puppeteer = require('puppeteer');
 let agent;
 let cheerio;
 let url;
-let games = [];
 let site;
-let move;
 
 module.exports = {
 
@@ -14,7 +12,6 @@ module.exports = {
         url = u;
         agent = a;
         cheerio = c;
-        move = m;
     },
 
     updateSite(s) {
@@ -59,7 +56,7 @@ module.exports = {
     gameFinder() {
         //site is set to the profile page
         let $ = cheerio.load(site);
-        games = [];
+        let games = [];
         return new Promise(resolve => {
             let links = 0;
             let total = $('td[class="homeGamesStats"] div div[class*="bar homeGameLinks"] a').length;
@@ -73,7 +70,6 @@ module.exports = {
                     const $2 = cheerio.load(r.text); //just loads that game page into cheerio
                     game.smallId = $2('#mapImage').attr('src').split('/')[2]; //get the small id from the image src
                     games.push(game);//adding to the list
-                    move.updateGames(games);
                     links++;
                     if (links === total) {
                         resolve(games);
