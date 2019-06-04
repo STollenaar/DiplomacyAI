@@ -129,7 +129,7 @@ function login() {
             printUser();
             let games = await state.gameFinder();
             game.gameCheck(games);
-            console.log(games);
+            console.log(`Current active games: ${games}`);
         });
     });
 }

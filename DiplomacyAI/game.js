@@ -23,6 +23,7 @@ module.exports = {
         let gam = await database.getGames(config.Username);
         games.forEach(g => {
             if (!gam.includes(g.bigId)) {
+                console.log(`Found new game ${g.bigId} adding to database`);
                 database.addGame(config.Username, g.bigId);
                 this.gameAdding(g.bigId, browser);
             }
@@ -94,7 +95,7 @@ module.exports = {
                 b = mess.b[b];
                 database.addBorder(Id, b.ownID, b.borderID, b.armyPass, b.fleetPass);
             }
-            console.log("Done parsing data");
+            console.log(`Done parsing data for new game ${Id}`);
         });
         await page.close();
     }
