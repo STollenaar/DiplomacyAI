@@ -43,9 +43,8 @@ PathFinding = function (d, a, u, game, startID, goal, unit) {
             let supplies = [];
             while (this.openList.length !== 0) {
                 let current = this.openList.shift(); //get the next element in the queue
-                let h = current.h;
                 this.closedList.push(current);
-                current = await this.database.getTerritoryByID(this.gameID, current.ID); //get the next element in the queue
+                let thing = await this.database.getTerritoryByID(this.gameID, current.ID); //get the next element in the queue
                 let id = current.ID;
                 let isHostileSupply = await this.page.evaluate((id, country) => {
 
@@ -53,15 +52,18 @@ PathFinding = function (d, a, u, game, startID, goal, unit) {
                     return fromT.supply && parseInt(fromT.countryID) !== parseInt(country);
                 }, id, country);
                 if (isHostileSupply) {
-
-                    supplies.push({ id: current.ID, name: current.name, distance:h, index:index});
+                    let h = current.h;
+                    while (current.parent.ID !== this.startID) {
+                        current = current.parent;
+                    }
+                    supplies.push({ id: current.ID, name: (await this.database.getTerritoryByID(this.gameID, current.ID)).name, distance:h, index:index});
                 } else {
-                    let rows = await this.database.getBorders(this.gameID, current.ID, this.unitType);
+                    let rows = await this.database.getBorders(this.gameID, thing.ID, this.unitType);
                     for (let r in rows) {
                         r = rows[r];
                         //check if next id is good
                         if (!this.inClosed(r.borderID) && !this.inOpen(r.borderID)) {
-                            this.openList.push(new Node(current, r.borderID, h+1));
+                            this.openList.push(new Node(current, r.borderID, current.h+1));
                         }
                     }
                 }

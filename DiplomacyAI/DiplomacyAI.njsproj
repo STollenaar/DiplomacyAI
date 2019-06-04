@@ -48,8 +48,7 @@
     <Compile Include="util.js">
       <SubType>Code</SubType>
     </Compile>
-    <Content Include="datasets\MultiArrayVarian1.json" />
-    <Content Include="datasets\SingleArrayVariant1.json" />
+    <Content Include="datasets\Variant1.json" />
     <Content Include="package.json" />
     <Content Include="README.md" />
   </ItemGroup>
