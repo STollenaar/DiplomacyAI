@@ -19,14 +19,16 @@ module.exports = {
 
     addGame(user, game) {
         db.serialize(function () {
-            db.run(`INSERT INTO games ('user', 'gameID') VALUES ('${user}', '${game}');`);
+            db.run(`INSERT INTO games ('username', 'gameID') VALUES ('${user}', ${game});`);
         });
     },
 
-    getGames(user, callback) {
-        db.serialize(function () {
-            db.all(`SELECT * FROM games WHERE 'user'='${user}';`, (err, rows) => {
-                callback(rows);
+    getGames(user) {
+        return new Promise(function (resolve, reject) {
+            db.serialize(function () {
+                db.all(`SELECT * FROM games WHERE 'username'='${user}';`, (err, rows) => {
+                    resolve(rows);
+                });
             });
         });
     },
@@ -40,7 +42,7 @@ module.exports = {
     getTerritoryByID(gameID, id) {
         return new Promise(function (resolve, reject) {
             db.serialize(function () {
-                db.get(`SELECT * FROM territories WHERE gameID=${gameID} AND ID=${id};`, (err, row) =>resolve(row));
+                db.get(`SELECT * FROM territories WHERE gameID=${gameID} AND ID=${id};`, (err, row) => resolve(row));
             });
         });
     },
@@ -79,7 +81,7 @@ module.exports = {
         db.serialize(function () {
             db.get(`SELECT * FROM config;`, (err, rows) => {
                 let object = [];
-                object.push({ 'Username': rows.Username, 'Password': rows.Pw, 'Site':rows.Site });
+                object.push({ 'Username': rows.Username, 'Password': rows.Pw, 'Site': rows.Site });
                 let json = JSON.stringify(object);
                 fs.writeFile('./config.json', json, 'utf8', callback);
             });

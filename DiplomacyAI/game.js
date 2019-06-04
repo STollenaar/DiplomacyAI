@@ -4,25 +4,39 @@ const puppeteer = require('puppeteer');
 let url;
 let agent;
 let database;
+let config;
 
 module.exports = {
     //adding game data to the db
 
-    init(u, a, d) {
+    init(u, a, d, c) {
         url = u;
         agent = a;
         database = d;
+        config = c;
     },
 
-    async gameAdding(Id) {
+    async gameCheck(games) {
+
+        const browser = await puppeteer.launch();
+
+        let gam = await database.getGames(config.Username);
+        games.forEach(g => {
+            if (!gam.includes(g.bigId)) {
+                database.addGame(config.Username, g.bigId);
+                this.gameAdding(g.bigId, browser);
+            }
+        });
+    },
+
+    async gameAdding(Id, browser) {
         const access = CookieAccess(
             url.hostname,
             url.pathname,
             'https:' === url.protocol
         );
-
-        const browser = await puppeteer.launch();
         const page = await browser.newPage();
+        
         //cooking inserting
         for (let cookies in agent.jar.getCookies(access)) {
             cookies = agent.jar.getCookies(access)[cookies];
@@ -82,5 +96,6 @@ module.exports = {
             }
             console.log("Done parsing data");
         });
+        await page.close();
     }
 };

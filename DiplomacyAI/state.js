@@ -60,20 +60,26 @@ module.exports = {
         //site is set to the profile page
         let $ = cheerio.load(site);
         games = [];
-        //going to loop over every game you are in
-        $('td[class="homeGamesStats"] div div[class*="bar homeGameLinks"] a').each(function () {
-            let game = {};
-            //gets the main id needed from each game from the open link
-            game.bigId = $(this).attr('href').split('=')[1].split('#')[0];
-            //quick navigation to that game
-            agent.get(`${url}board.php?gameID=${game.bigId}#gamePanel`).then(function (r) {
-                const $2 = cheerio.load(r.text); //just loads that game page into cheerio
-                game.smallId = $2('#mapImage').attr('src').split('/')[2]; //get the small id from the image src
-                games.push(game);//adding to the list
-                move.updateGames(games);
-                console.log(game);
+        return new Promise(resolve => {
+            let links = 0;
+            let total = $('td[class="homeGamesStats"] div div[class*="bar homeGameLinks"] a').length;
+            //going to loop over every game you are in
+            $('td[class="homeGamesStats"] div div[class*="bar homeGameLinks"] a').each(function () {
+                let game = {};
+                //gets the main id needed from each game from the open link
+                game.bigId = $(this).attr('href').split('=')[1].split('#')[0];
+                //quick navigation to that game
+                agent.get(`${url}board.php?gameID=${game.bigId}#gamePanel`).then(function (r) {
+                    const $2 = cheerio.load(r.text); //just loads that game page into cheerio
+                    game.smallId = $2('#mapImage').attr('src').split('/')[2]; //get the small id from the image src
+                    games.push(game);//adding to the list
+                    move.updateGames(games);
+                    links++;
+                    if (links === total) {
+                        resolve(games);
+                    }
+                });
             });
-
         });
     },
 

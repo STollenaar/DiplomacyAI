@@ -13,22 +13,22 @@ let agent = request.agent();
 
 fs.stat('./config.json', function (err, stat) {
     if (err === null) {
-        config = require('./config.json');
-        url = config[0].Site;
+        config = require('./config.json')[0];
+        url = config.Site;
 
         move.init(url, agent, cheerio, database);
         state.init(url, agent, cheerio, move);
-        game.init(url, agent, database);
+        game.init(url, agent, database, config);
         login();
     } else if (err.code === 'ENOENT') {
         console.log("Deploying config");
         database.defaultConfig(fs, function () {
-            config = require('./config.json');
-            url = config[0].Site;
+            config = require('./config.json')[0];
+            url = config.Site;
 
             move.init(url, agent, cheerio, database);
             state.init(url, agent, cheerio, move);
-            game.init(url, agent, database);
+            game.init(url, agent, database, config);
         });
     }
 
@@ -96,10 +96,6 @@ input.addListener("data", async function (d) {
             move.canMakeMoves(d[1]);
             break;
 
-        case "addGame":
-            game.gameAdding(d[1]);
-            break;
-
         case "peek":
             state.peek(d[1]);
             break;
@@ -123,7 +119,7 @@ input.addListener("data", async function (d) {
 
 
 function login() {
-    agent.post(`${url}logon.php`).type('form').send({ loginuser: config[0].Username }).send({ loginpass: config[0].Password }).then(function (response) {
+    agent.post(`${url}logon.php`).type('form').send({ loginuser: config.Username }).send({ loginpass: config.Password }).then(function (response) {
         const $ = cheerio.load(response.text);
         userID = $('div #header-welcome a').attr('href').split('=')[1];
         //navigates to the user profile
@@ -131,7 +127,9 @@ function login() {
             site = r.text;
             state.updateSite(site);
             printUser();
-            state.gameFinder();
+            let games = await state.gameFinder();
+            game.gameCheck(games);
+            console.log(games);
         });
     });
 }

@@ -14,31 +14,15 @@ PathFinding = function (d, a, u, game, startID, goal, unit) {
     this.unitType = unit;
     this.startID = startID;
 
-    this.init = async function (ignoreGoal) {
-        this.browser = await puppeteer.launch();
-        this.page = await this.browser.newPage();
-
-        const access = CookieAccess(
-            this.url.hostname,
-            this.url.pathname,
-            'https:' === this.url.protocol
-        );
-
-        for (let cookies in this.agent.jar.getCookies(access)) {
-            cookies = this.agent.jar.getCookies(access)[cookies];
-            if (cookies !== undefined && cookies.value !== undefined) {
-                cookies.url = this.url;
-                await this.page.setCookie(cookies);
-            }
-        }
-        await this.page.goto(`${this.url}board.php?gameID=${this.gameID}`, { "waitUntil": "load" });
+    this.init = async function (ignoreGoal, page) {
+        this.page = page;
 
         if (this.goalID <= -1 && !ignoreGoal) {
             this.goalID = await this.findClosestSupply(this.startID, Math.abs(this.goalID), blocked);
         }
     };
 
-    this.findClosestSupply = function (fromID, country, index) {
+    this.findClosestSupply = async function (fromID, country, index) {
         return new Promise(async resolve => {
             let supplies = [];
             while (this.openList.length !== 0) {
@@ -53,7 +37,7 @@ PathFinding = function (d, a, u, game, startID, goal, unit) {
                 }, id, country);
                 if (isHostileSupply) {
                     let h = current.h;
-                    while (current.parent.ID !== this.startID) {
+                    while (current.parent !== undefined && current.parent !== -1 && current.parent.ID !== this.startID) {
                         current = current.parent;
                     }
                     supplies.push({ id: current.ID, name: (await this.database.getTerritoryByID(this.gameID, current.ID)).name, distance:h, index:index});
@@ -72,7 +56,6 @@ PathFinding = function (d, a, u, game, startID, goal, unit) {
             this.openList = [];
             this.openList.push(new Node(-1, parseInt(fromID), 0));
             this.closedList = [];
-           // console.log(supplies);
             resolve(supplies);
         });
     };
@@ -124,6 +107,7 @@ PathFinding = function (d, a, u, game, startID, goal, unit) {
                     path.push(thing.ID);
                     current = current.parent;
                 }
+                await this.page.close();
                 return path.reverse()[1];
 
             } else {
@@ -139,8 +123,6 @@ PathFinding = function (d, a, u, game, startID, goal, unit) {
         }
         return -1;
     };
-
-    return this;
 };
 Node = function (parent, id, h) {
     let self = {};
