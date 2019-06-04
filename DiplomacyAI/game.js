@@ -2,27 +2,30 @@
 const puppeteer = require('puppeteer');
 const cheerio = require('cheerio');
 const move = require('./move');
+const builder = require('./builder');
 
 let url;
 let agent;
 let database;
 let config;
 let browser;
+let game;
 
 module.exports = {
-    //adding game data to the db
-
+    
     init(u, a, d, c) {
         url = u;
         agent = a;
         database = d;
         config = c;
 
-        move.init(u, a, cheerio, d);
+        move.init(a, cheerio, d);
+        builder.init(a, cheerio, d);
     },
 
+    //adding game data to the db
     async gameCheck(games) {
-
+        game = games;
         browser = await puppeteer.launch();
 
         let gam = (await database.getGames(config.Username)).map(e => e.gameID);
@@ -107,13 +110,12 @@ module.exports = {
 
     async canMakeMoves(debug) {
         tries = 0;
-        console.log(games);
+        console.log(game);
 
-        for (gameID in games) {
-            await this.checkMove(games[gameID].bigId, browser, debug);
+        for (gameID in game) {
+            await this.checkMove(game[gameID].bigId, browser, debug);
         }
         console.log("Done checking games");
-        // await browser.close();
     },
 
     async checkMove(gameId, browser, debug) {
@@ -137,12 +139,21 @@ module.exports = {
             const html = await page.content();
             const $ = cheerio.load(html);
             if ($('div.memberUserDetail').text().includes('No orders submitted!') || $('div.memberUserDetail').text().includes('but not ready for next turn')) {
-                if (await move.makeMove(html, gameId, page, debug)) {
-                    await move.makeRandomMove(html, page);
+                //switching between the different phases
+                switch ($('span[class="gamePhase"]').text()) {
+                    case "Diplomacy":
+                        if (await move.makeMove(html, gameId, page, debug)) {
+                            await move.makeRandomMove(html, page);
+                        }
+                        break;
+                    case "Builds":
+                        await move.makeRandomMove(html, page);
+                        break;
+                    case "Retreats":
+                        await move.makeRandomMove(html, page);
+                        break;
                 }
             }
         });
-
-        await page.close();
     }
 };

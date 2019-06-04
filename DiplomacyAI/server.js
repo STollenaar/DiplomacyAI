@@ -98,11 +98,6 @@ input.addListener("data", async function (d) {
             state.peek(d[1]);
             break;
 
-        case "path":
-            let finder = await new PathFinding(database, agent, url, d[1], d[2], d[3], d[4]);
-            console.log("Starting search");
-            console.log(await finder.findPath());
-            break;
         case "checkMoveDebug":
             let supplies = require(`./datasets/${d[1]}.json`);
             supplies = supplies.sort((a, b) => { return a.distance - b.distance; });

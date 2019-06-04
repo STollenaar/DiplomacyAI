@@ -1,10 +1,6 @@
-﻿const CookieAccess = require('cookiejar').CookieAccessInfo;
-const puppeteer = require('puppeteer');
-
-PathFinding = function (d, a, u, game, startID, goal, unit) {
+﻿PathFinding = function (d, a, game, startID, goal, unit) {
     this.database = d;
     this.agent = a;
-    this.url = u;
 
     this.gameID = parseInt(game);
     this.closedList = [];
