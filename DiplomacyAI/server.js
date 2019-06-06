@@ -56,7 +56,7 @@ input.addListener("data", async function (d) {
             break;
         case "login":
             //login in
-            login();
+            login(d[1], d[2]);
             break;
         case "logout":
             {
@@ -101,18 +101,40 @@ input.addListener("data", async function (d) {
         case "checkMoveDebug":
             let supplies = require(`./datasets/${d[1]}.json`);
             supplies = supplies.sort((a, b) => { return a.distance - b.distance; });
-            supplies = move.extract(supplies);
+            supplies = game.debugParser(supplies);
             console.log("RESULTS");
             console.log(supplies);
             break;
+
+        case "auto":
+            if (d[1] === undefined) {
+                console.log("Argument is undefined.. please define as start or stop.");
+            } else if (d[1] === "start") {
+                if (d[2] === undefined) {
+                    console.log("Time is undefined.. please define as seconds to wait.");
+                } else {
+                    game.startAutoCheck(d[2]);
+                }
+            } else if (d[1] === "stop") {
+                game.stopAutoCheck();
+            } else {
+                console.log("Unkown argument.");
+            }
     }
 
 });
 
 
 
-function login() {
-    agent.post(`${url}logon.php`).type('form').send({ loginuser: config.Username }).send({ loginpass: config.Password }).then(function (response) {
+function login(username, password) {
+    if (username === undefined) {
+        username = config.Username;
+    }
+    if (password === undefined) {
+        password = config.Password;
+    }
+
+    agent.post(`${url}logon.php`).type('form').send({ loginuser: username }).send({ loginpass: password }).then(function (response) {
         const $ = cheerio.load(response.text);
         userID = $('div #header-welcome a').attr('href').split('=')[1];
         //navigates to the user profile

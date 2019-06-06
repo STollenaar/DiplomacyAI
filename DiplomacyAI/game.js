@@ -3,16 +3,18 @@ const puppeteer = require('puppeteer');
 const cheerio = require('cheerio');
 const move = require('./move');
 const builder = require('./builder');
+const retreater = require('./retreater');
 
 let url;
 let agent;
 let database;
 let config;
-let browser;
 let game;
 
+let runnable;
+
 module.exports = {
-    
+
     init(u, a, d, c) {
         url = u;
         agent = a;
@@ -21,19 +23,30 @@ module.exports = {
 
         move.init(a, cheerio, d);
         builder.init(a, cheerio, d);
+        retreater.init(a, cheerio, d);
+    },
+
+    //starting the autocheck
+    startAutoCheck(secondsDelay) {
+        runnable = setInterval(function () { module.exports.canMakeMoves(true); }, secondsDelay * 1000);
+    },
+
+    //stopping the autocheck
+    stopAutoCheck() {
+        clearInterval(runnable);
     },
 
     //adding game data to the db
     async gameCheck(games) {
         game = games;
-        browser = await puppeteer.launch();
+       this.browser = await puppeteer.launch();
 
         let gam = (await database.getGames(config.Username)).map(e => e.gameID);
         games.forEach(g => {
             if (!gam.includes(parseInt(g.bigId))) {
                 console.log(`Found new game ${g.bigId} adding to database`);
                 database.addGame(config.Username, g.bigId);
-                this.gameAdding(g.bigId, browser);
+                this.gameAdding(g.bigId, this.browser);
             }
         });
     },
@@ -113,7 +126,7 @@ module.exports = {
         console.log(game);
 
         for (gameID in game) {
-            await this.checkMove(game[gameID].bigId, browser, debug);
+            await this.checkMove(game[gameID].bigId, this.browser, debug);
         }
         console.log("Done checking games");
     },
@@ -139,6 +152,8 @@ module.exports = {
             const html = await page.content();
             const $ = cheerio.load(html);
             if ($('div.memberUserDetail').text().includes('No orders submitted!') || $('div.memberUserDetail').text().includes('but not ready for next turn')) {
+                console.log(`Making a move for game: ${gameId}`);
+
                 //switching between the different phases
                 switch ($('span[class="gamePhase"]').text()) {
                     case "Diplomacy":
@@ -147,13 +162,19 @@ module.exports = {
                         }
                         break;
                     case "Builds":
-                        await move.makeRandomMove(html, page);
+                        await builder.makeRandomMove(html, page);
                         break;
                     case "Retreats":
-                        await move.makeRandomMove(html, page);
+                        await retreater.makeRandomMove(html, page);
                         break;
                 }
+
+                console.log(`Done making a move for game: ${gameId}`);
             }
         });
+    },
+
+    debugParser(supplies) {
+        return move.extract(supplies);
     }
 };

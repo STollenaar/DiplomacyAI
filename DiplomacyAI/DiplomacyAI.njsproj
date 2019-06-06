@@ -44,6 +44,9 @@
     <Compile Include="pathFinding.js">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="retreater.js">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="server.js" />
     <Compile Include="state.js">
       <SubType>Code</SubType>

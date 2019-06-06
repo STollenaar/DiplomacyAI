@@ -30,6 +30,7 @@ module.exports = {
                     const order = Math.floor(Math.random() * Math.floor(await page.$eval(`div#${id} span[class="orderSegment type"] select`, e => e.length)));
 
                     if (tr.children('div').children('span[class="orderSegment type"]').children('select').children().eq(order).attr('value') === "Wait") {
+                        results++;
                         break;
                     }
                     await page.select(`div#${id} select[ordertype="type"]`, tr.children('div').children('span[class="orderSegment type"]').children('select').children().eq(order).attr('value'));
@@ -48,6 +49,7 @@ module.exports = {
                                     //get a valid to value
                                     const to = Math.floor(Math.random() * Math.floor(await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.length)));
                                     if (await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, (e, to) => e.children[to].innerHTML, to) !== "") {
+                                        results++;
                                         loop2 = false;
                                         await page.select(`div#${id} span[class="orderSegment toTerrID"] select`, await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, (e, to) => e.children[to].value, to));
                                     }
@@ -57,12 +59,12 @@ module.exports = {
                     }
                 }
 
-                results++;
                 if (results === total) {
                     resolve();
                 }
             });
         });
+
         await page.$eval('input[name="Ready"]', b => b.click());
         await page.close();
     }

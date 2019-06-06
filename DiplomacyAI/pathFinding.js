@@ -28,7 +28,11 @@
                 let id = current.ID;
                 let isHostileSupply = await this.page.evaluate((id, country) => {
 
-                    let fromT = window.Territories._object[id];
+                    let fromT = window.Territories._object[id].coastParent;
+                    let owner = window.TerrStatus.find(e => e.id === fromT.id);
+                    if (owner !== undefined) {
+                        fromT.countryID = owner.ownerCountryID;
+                    }
                     return fromT.supply && parseInt(fromT.countryID) !== parseInt(country);
                 }, id, country);
                 if (isHostileSupply) {

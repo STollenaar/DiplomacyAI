@@ -18,7 +18,7 @@ module.exports = {
         const $ = cheerio.load(site);
         await new Promise(resolve => {
             let results = 0;
-            let total = $('table.orders').children().length;
+            let total = $('table.orders tbody').children().length;
             $('table.orders td[class="order"]').each(async function () {
                 let tr = $(this);
                 //removes the default selected option
@@ -27,7 +27,6 @@ module.exports = {
                 //random order
                 while (loop1) {
                     const order = Math.floor(Math.random() * Math.floor(await page.$eval(`div#${id} span[class="orderSegment type"] select`, e => e.length)));
-                    console.log(tr.children('div').children('span[class="orderSegment type"]').children('select').children().eq(order).attr('value'));
 
                     if (order === 0 && tr.children('div').children('span[class="orderSegment type"]').children('select').children().eq(order).attr('value') === "Hold") {
                         break;
@@ -94,10 +93,8 @@ module.exports = {
             });
         });
 
-        console.log("Readying");
         await page.$eval('input[name="Ready"]', b => b.click());
         await page.close();
-
     },
 
     async makeMove(site, gameId, page, debug) {
@@ -211,17 +208,17 @@ module.exports = {
             //going over every grouped duplicate and finding the best combination possible
             for (let dup of counted) {
                 for (let d = 0; d < dup.value; d++) {
-                    let objectCopy = objects;
+                    let objectCopy = Array.from(objects);
                     //getting a duplicate from the array
                     let grabbedDup = _.flatten(objectCopy).filter(e => e.name.split('(')[0].trim() === dup.name)[d];
                     //filtering out other duplicates, same as with the normal xor above
-                    objectCopy.forEach((value, index) => objectCopy[index] = value.filter(a => a.index === grabbedDup.index || a.name.split('(')[0].trim() === grabbedDup.name.split('(')[0].trim()));
+                    objectCopy.forEach((value, index) => objectCopy[index] = value.filter(a => a.index !== grabbedDup.index
+                        && a.name.split('(')[0].trim() !== grabbedDup.name.split('(')[0].trim()));
                     objectCopy = objectCopy.filter(e => e.length !== 0);
                     let xorDup = _.xorBy(...objectCopy, (e) => e.name.split('(')[0].trim());
                     //grouping the duplicates
                     let countedXor = _.countBy(_.flatten(xorDup), e => e.index);
                     countedXor = Object.keys(countedXor).map(e => { return { "index": parseInt(e), "value": parseInt(countedXor[e]) }; }).filter(e => e.value > 1);
-
                     //removing any duplicate indexes just in case same as above
                     countedXor.forEach(e => {
                         let xorFil = xorDup.filter(a => a.index === e.index);
@@ -232,11 +229,11 @@ module.exports = {
                             e.value--;
                         }
                     });
-
                     //seeing if this results in the duplicate filtering being done
                     if (xorDup.length + results.length + 1 === maxI) {
                         let totalD = xorDup.reduce((tot, e) => tot + e.distance, 0);
-                        resDupTotal.push({ 'totalD': totalD, 'entries': xorDup.push(grabbedDup) });
+                        xorDup.push(grabbedDup);
+                        resDupTotal.push({ 'totalD': totalD, 'entries': xorDup});
                     } else {
                         //removing from array all results, xorDup and grabbedDub
                         let nextA = [];
@@ -248,7 +245,6 @@ module.exports = {
                             && !xorDup.map(o => o.index).includes(a.index)
                             && !xorDup.map(o => o.name.split('(')[0].trim()).includes(a.name.split('(')[0].trim())));
                         nextA = nextA.filter(e => e.length !== 0);
-
                         //going recursive
                         let recursionEnd = module.exports.extract(nextA);
                         let totalD = recursionEnd.reduce((tot, e) => tot + e.distance, 0) + xorDup.reduce((tot, e) => tot + e.distance, 0);
