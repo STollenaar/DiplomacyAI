@@ -39,7 +39,7 @@ module.exports = {
     //adding game data to the db
     async gameCheck(games) {
         game = games;
-       this.browser = await puppeteer.launch();
+        this.browser = await puppeteer.launch();
 
         let gam = (await database.getGames(config.Username)).map(e => e.gameID);
         games.forEach(g => {
@@ -165,7 +165,9 @@ module.exports = {
                         await builder.makeRandomMove(html, page);
                         break;
                     case "Retreats":
-                        await retreater.makeRandomMove(html, page);
+                        if (await retreater.makeMove(html, gameId, page)) {
+                            await retreater.makeRandomMove(html, page);
+                        }
                         break;
                 }
 
@@ -173,8 +175,4 @@ module.exports = {
             }
         });
     },
-
-    debugParser(supplies) {
-        return move.extract(supplies);
-    }
 };

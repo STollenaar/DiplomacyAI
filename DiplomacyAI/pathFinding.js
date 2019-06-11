@@ -60,6 +60,50 @@
         });
     };
 
+
+    this.findClosestEmpty = async function (fromID, country, index) {
+        return new Promise(async resolve => {
+            let supplies = [];
+            while (this.openList.length !== 0) {
+                let current = this.openList.shift(); //get the next element in the queue
+                this.closedList.push(current);
+                let thing = await this.database.getTerritoryByID(this.gameID, current.ID); //get the next element in the queue
+                let id = current.ID;
+                let isHostileSupply = await this.page.evaluate((id, country) => {
+
+                    let fromT = window.Territories._object[id].coastParent;
+                    let owner = window.TerrStatus.find(e => e.id === fromT.id);
+                    if (owner !== undefined) {
+                        fromT.countryID = owner.ownerCountryID;
+                        fromT.unitID = owner.unitID;
+                    }
+                    return fromT.unitID === undefined || fromT.unitID === null;
+                }, id, country);
+                if (isHostileSupply) {
+                    let h = current.h;
+                    while (current.parent !== undefined && current.parent !== -1 && current.parent.ID !== this.startID) {
+                        current = current.parent;
+                    }
+                    supplies.push({ id: current.ID, name: (await this.database.getTerritoryByID(this.gameID, current.ID)).name, distance: h, index: index });
+                } else {
+                    let rows = await this.database.getBorders(this.gameID, thing.ID, this.unitType);
+                    for (let r in rows) {
+                        r = rows[r];
+                        //check if next id is good
+                        if (!this.inClosed(r.borderID) && !this.inOpen(r.borderID)) {
+                            this.openList.push(new Node(current, r.borderID, current.h + 1));
+                        }
+                    }
+                }
+            }
+            //cleaning up and getting ready for path finding..
+            this.openList = [];
+            this.openList.push(new Node(-1, parseInt(fromID), 0));
+            this.closedList = [];
+            resolve(supplies);
+        });
+    };
+
     //check if toID is in closed list
     this.inClosed = function (toID) {
         for (let c in this.closedList) {

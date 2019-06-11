@@ -5,7 +5,7 @@ const database = require('./database');
 const state = require('./state');
 const game = require('./game');
 const pathFinding = require('./pathFinding');
-
+const util = require('./util');
 
 let url;
 let config;
@@ -101,7 +101,7 @@ input.addListener("data", async function (d) {
         case "checkMoveDebug":
             let supplies = require(`./datasets/${d[1]}.json`);
             supplies = supplies.sort((a, b) => { return a.distance - b.distance; });
-            supplies = game.debugParser(supplies);
+            supplies = util.extract(supplies);
             console.log("RESULTS");
             console.log(supplies);
             break;
