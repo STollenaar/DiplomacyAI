@@ -135,11 +135,11 @@ module.exports = {
                     let tr = $(this);
                     //removes the default selected option
                     let id = tr.children('div').attr('id');
-
                     //making the move
-                    if (supplies[index].distance !== 0) {
+                    if (supplies.find(e => e.index === index) !== undefined &&
+                        supplies.find(e => e.index === index).distance !== 0) {
                         await page.select(`div#${id} select[ordertype="type"]`, 'Move');
-                        await page.select(`div#${id} span[class="orderSegment toTerrID"] select`, String(supplies[index].id));
+                        await page.select(`div#${id} span[class="orderSegment toTerrID"] select`, String(supplies.find(e => e.index === index).id));
                     }
                     resolved++;
                     if (resolved === orderLength) {
@@ -233,7 +233,7 @@ module.exports = {
                     if (xorDup.length + results.length + 1 === maxI) {
                         let totalD = xorDup.reduce((tot, e) => tot + e.distance, 0);
                         xorDup.push(grabbedDup);
-                        resDupTotal.push({ 'totalD': totalD, 'entries': xorDup});
+                        resDupTotal.push({ 'totalD': totalD, 'entries': xorDup });
                     } else {
                         //removing from array all results, xorDup and grabbedDub
                         let nextA = [];
