@@ -206,14 +206,13 @@ module.exports = {
                                     }
                                 });
                             });
-                            resolve(supplies);
-                            return;
                         }
                     }
+                } else {
+                    //making move into empty territory
+                    await page.select(`div#${current.divId} select[ordertype="type"]`, 'Move');
+                    await page.select(`div#${current.divId} span[class="orderSegment toTerrID"] select`, String(current.id));
                 }
-                //making move into empty territory
-                await page.select(`div#${current.divId} select[ordertype="type"]`, 'Move');
-                await page.select(`div#${current.divId} span[class="orderSegment toTerrID"] select`, String(current.id));
             }
             resolve(supplies);
         });

@@ -95,7 +95,7 @@ module.exports = {
                 //sorting the results of the duplicates and adding to the normal result list
                 results = results.concat(resDupTotal.sort((a, b) => a.totalD - b.totalD)[0].entries);
             }
-            //checking if done and returning is so
+            //checking if done and returning if so
             if (results.length === maxI) {
                 results = results.sort((a, b) => a.index - b.index);
                 return results;
