@@ -160,13 +160,10 @@ module.exports = {
                     let fromT = window.Territories._object[id].coastParent;
                     let owner = window.TerrStatus.find(e => e.id === fromT.id);
                     let units = [];
+                    //constructing serializable object
                     for (u in window.Units._object) {
                         u = window.Units._object[u];
-                        let unit = {};
-                        unit.id = u.id;
-                        unit.terrID = u.terrID;
-                        unit.countryID = u.countryID;
-                        unit.moveChoices = u.getMoveChoices();
+                        let unit = { id: u.id, terrID: u.terrID, countryID: u.countryID, moveChoices: u.getMoveChoices() };
                         units.push(unit);
                     }
 
@@ -178,31 +175,29 @@ module.exports = {
                     if (units.find(e => e.id === owner.unitID).countryID !== countryID) {
                         let total = units.find(e => e.id === owner.unitID).moveChoices.length;
                         let tries = 0;
-                        await new Promise(async (resolve) => {
+                        await new Promise(async (r) => {
                             units.find(e => e.id === owner.unitID).moveChoices.forEach(async e => {
-                                let friendly = units.find(a => a.terrID != current.fromId
-                                    && a.terrID === e.id && a.countryID === countryID);
-                                console.log(friendly);
+                                //finding friendly unit to help getting to the other territory
+                                let friendly = units.find(a => a.terrID !== String(current.fromId)
+                                    && a.terrID === e && a.countryID === countryID);
                                 if (friendly !== undefined) {
-                                    let order = supplies.find(a => a.id === friendly.terrID);
+                                    let order = supplies.find(a => String(a.fromId) === friendly.terrID);
                                     await page.select(`div#${order.divId} select[ordertype="type"]`, 'Support move');
                                     await page.select(`div#${order.divId} span[class="orderSegment toTerrID"] select`, String(current.id));
                                     await page.select(`div#${order.divId} span[class="orderSegment fromTerrID"] select`, String(current.fromId));
-                                    tries++;
-                                    supplies = supplies.filter(e => e.index === order.index);
-                                    if (total === tries) {
-                                        resolve(supplies);
-                                    }
+                                    supplies = supplies.filter(e => e.index !== order.index);
+                                }
+                                tries++;
+                                if (total === tries) {
+                                    r(supplies);
                                 }
                             });
                         });
                     }
-                } else {
-                    await page.select(`div#${current.divId} select[ordertype="type"]`, 'Move');
-                    await page.select(`div#${current.divId} span[class="orderSegment toTerrID"] select`, String(current.id));
-                    resolve(supplies);
                 }
-            } else {
+                //making move
+                await page.select(`div#${current.divId} select[ordertype="type"]`, 'Move');
+                await page.select(`div#${current.divId} span[class="orderSegment toTerrID"] select`, String(current.id));
                 resolve(supplies);
             }
         });
