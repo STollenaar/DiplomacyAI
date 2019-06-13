@@ -3,7 +3,7 @@
 module.exports = {
 
     //extracting the best possible choices for each unit to make to get to the closest supply depot
-    extract(array) {
+    extractLowestDistance(array) {
         let maxRow = array.map(row => Math.max.apply(Math, row.map(function (o) { return o.distance; }))); //row with the highest distance in it
         let maxD = Math.max.apply(Math, maxRow.map(function (o) { return o; })); //highest total distance
         let maxI = array.length; //amount of indexes I need to work with and need results for
@@ -19,7 +19,7 @@ module.exports = {
             let xor = _.xorBy(...objects, (e) => e.name.split('(')[0].trim());
             //grouping the duplicates
             let countedXor = _.countBy(_.flatten(xor), e => e.index);
-            countedXor = Object.keys(countedXor).map(e => { return { "index": parseInt(e), "value": parseInt(countedXor[e]) }; }).filter(e => e.value > 1);
+            countedXor = Object.keys(countedXor).map(e => { return{ "index": parseInt(e), "value": parseInt(countedXor[e]) }; }).filter(e => e.value > 1);
             //removing any duplicate indexes just in case
             countedXor.forEach(e => {
                 let xorFil = xor.filter(a => a.index === e.index);
@@ -82,7 +82,7 @@ module.exports = {
                             && !xorDup.map(o => o.name.split('(')[0].trim()).includes(a.name.split('(')[0].trim())));
                         nextA = nextA.filter(e => e.length !== 0);
                         //going recursive
-                        let recursionEnd = module.exports.extract(nextA);
+                        let recursionEnd = module.exports.extractLowestDistance(nextA);
                         let totalD = recursionEnd.reduce((tot, e) => tot + e.distance, 0) + xorDup.reduce((tot, e) => tot + e.distance, 0);
                         //adding it all together
                         xorDup.push(grabbedDup);
@@ -105,5 +105,15 @@ module.exports = {
         //not having a proper results, but still gotta return something
         results = results.sort((a, b) => a.index - b.index);
         return results;
+    },
+
+
+    calculateRisk(targetUnit, surTerr, units) {
+        surTerr.forEach(terr => {
+            //getting the risk number for supporting
+            terr.risk = units.filter(u => u.id !== targetUnit.id && u.moveChoices.includes(String(terr.fromId))).length;
+        });
+        surTerr = surTerr.sort((a, b) => a.risk - b.risk);
+        return surTerr;
     }
 };

@@ -126,7 +126,7 @@ module.exports = {
         if (debug) {
             module.exports.saveDataSet(supplies);
         }
-        supplies = util.extract(supplies);
+        supplies = util.extractLowestDistance(supplies);
         console.log("RESULTS");
         console.log(supplies);
         resolved = 0;
@@ -144,19 +144,19 @@ module.exports = {
                     }
                 });
             });
-            //await page.$eval('input[name="Ready"]', b => b.click());
-            await page.$eval('input[name="Update"]', b => b.click());
+            await page.$eval('input[name="Ready"]', b => b.click());
             await page.close();
         }
         return supplies.length === 0;
     },
 
+    //added more logic to making a move, seeing if a move needs support for it
     moveLogic(page, supplies, index, countryID) {
         return new Promise(async (resolve) => {
             if (supplies.find(e => e.index === index).distance !== 0) {
                 let current = supplies.find(e => e.index === index);
 
-                let { owner, units } = await page.evaluate((id) => {
+                let { targetStatus, units } = await page.evaluate((id) => {
                     let fromT = window.Territories._object[id].coastParent;
                     let owner = window.TerrStatus.find(e => e.id === fromT.id);
                     let units = [];
@@ -167,39 +167,52 @@ module.exports = {
                         units.push(unit);
                     }
 
-                    return { owner: owner, units: units };
+                    return { targetStatus: owner, units: units };
                 }, current.id);
 
                 //checking if the territory is occupied by no one or a friendly
-                if (owner !== undefined) {
-                    if (units.find(e => e.id === owner.unitID).countryID !== countryID) {
-                        let total = units.find(e => e.id === owner.unitID).moveChoices.length;
-                        let tries = 0;
-                        await new Promise(async (r) => {
-                            units.find(e => e.id === owner.unitID).moveChoices.forEach(async e => {
-                                //finding friendly unit to help getting to the other territory
-                                let friendly = units.find(a => a.terrID !== String(current.fromId)
-                                    && a.terrID === e && a.countryID === countryID);
-                                if (friendly !== undefined) {
-                                    let order = supplies.find(a => String(a.fromId) === friendly.terrID);
-                                    await page.select(`div#${order.divId} select[ordertype="type"]`, 'Support move');
-                                    await page.select(`div#${order.divId} span[class="orderSegment toTerrID"] select`, String(current.id));
-                                    await page.select(`div#${order.divId} span[class="orderSegment fromTerrID"] select`, String(current.fromId));
-                                    supplies = supplies.filter(e => e.index !== order.index);
-                                }
-                                tries++;
-                                if (total === tries) {
-                                    r(supplies);
-                                }
+                if (targetStatus !== undefined) {
+                    let targetUnit = units.find(e => e.id === targetStatus.unitID);
+                    if (targetUnit.countryID !== countryID) {
+
+                        //finding friendly unit to help getting to the other territory
+                        let surrFriendly = units.filter(a => a.moveChoices.includes(String(current.id))
+                            && a.countryID === countryID);
+                        if (surrFriendly !== undefined) {
+                            //calculating the risk of supporting for every option
+                            let riskCalc = util.calculateRisk(targetUnit, supplies.filter(s => surrFriendly.map(f => f.terrID).includes(String(s.fromId))), units);
+                            let highestRisk = riskCalc[riskCalc.length - 1];
+                            let total = riskCalc.length;
+                            let tries = 0;
+                            await new Promise(async (r) => {
+                                riskCalc.forEach(async (value, index) => {
+                                    if (index === riskCalc.length - 1) {
+                                        //making move
+                                        await page.select(`div#${value.divId} select[ordertype="type"]`, 'Move');
+                                        await page.select(`div#${value.divId} span[class="orderSegment toTerrID"] select`, String(current.id));
+                                        supplies = supplies.filter(e => e.index !== value.index);
+                                    } else {
+                                        await page.select(`div#${value.divId} select[ordertype="type"]`, 'Support move');
+                                        await page.select(`div#${value.divId} span[class="orderSegment toTerrID"] select`, String(current.id));
+                                        await page.select(`div#${value.divId} span[class="orderSegment fromTerrID"] select`, String(highestRisk.fromId));
+                                        supplies = supplies.filter(e => e.index !== value.index);
+                                    }
+                                    tries++;
+                                    if (total === tries) {
+                                        r(supplies);
+                                    }
+                                });
                             });
-                        });
+                            resolve(supplies);
+                            return;
+                        }
                     }
                 }
-                //making move
+                //making move into empty territory
                 await page.select(`div#${current.divId} select[ordertype="type"]`, 'Move');
                 await page.select(`div#${current.divId} span[class="orderSegment toTerrID"] select`, String(current.id));
-                resolve(supplies);
             }
+            resolve(supplies);
         });
     },
 

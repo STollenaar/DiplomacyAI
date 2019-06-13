@@ -39,7 +39,7 @@ module.exports = {
     //adding game data to the db
     async gameCheck(games) {
         game = games;
-        this.browser = await puppeteer.launch();
+        this.browser = await puppeteer.launch({ headless: true });
 
         let gam = (await database.getGames(config.Username)).map(e => e.gameID);
         games.forEach(g => {

@@ -95,7 +95,7 @@ module.exports = {
         });
         supplies = supplies.sort((a, b) => { return a.distance - b.distance; });
 
-        supplies = util.extract(supplies);
+        supplies = util.extractLowestDistance(supplies);
         console.log("RESULTS");
         console.log(supplies);
         resolved = 0;
