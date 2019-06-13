@@ -18,7 +18,7 @@
         }
     };
 
-    this.findClosestSupply = async function (fromID, country, index) {
+    this.findClosestSupply = function (fromID, country, index) {
         return new Promise(async resolve => {
             let supplies = [];
             while (this.openList.length !== 0) {
@@ -61,7 +61,7 @@
     };
 
 
-    this.findClosestEmpty = async function (fromID, country, index) {
+    this.findClosestEmpty = function (fromID, index) {
         return new Promise(async resolve => {
             let supplies = [];
             while (this.openList.length !== 0) {
@@ -69,7 +69,7 @@
                 this.closedList.push(current);
                 let thing = await this.database.getTerritoryByID(this.gameID, current.ID); //get the next element in the queue
                 let id = current.ID;
-                let isHostileSupply = await this.page.evaluate((id, country) => {
+                let isHostileSupply = await this.page.evaluate((id) => {
 
                     let fromT = window.Territories._object[id].coastParent;
                     let owner = window.TerrStatus.find(e => e.id === fromT.id);
@@ -78,7 +78,7 @@
                         fromT.unitID = owner.unitID;
                     }
                     return fromT.unitID === undefined || fromT.unitID === null;
-                }, id, country);
+                }, id);
                 if (isHostileSupply) {
                     let h = current.h;
                     while (current.parent !== undefined && current.parent !== -1 && current.parent.ID !== this.startID) {

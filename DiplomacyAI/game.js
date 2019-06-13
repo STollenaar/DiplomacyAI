@@ -174,5 +174,5 @@ module.exports = {
                 console.log(`Done making a move for game: ${gameId}`);
             }
         });
-    },
+    }
 };

@@ -99,19 +99,21 @@ module.exports = {
 
     async makeMove(site, gameId, page, debug) {
         const $ = cheerio.load(site);
-        countryID = $('span[class*="memberYourCountry"]').attr('class').split(' ')[0].substr(-1);
+        const countryID = $('span[class*="memberYourCountry"]').attr('class').split(' ')[0].substr(-1);
         const orderLength = $('table.orders tbody').children().length;
         let supplies = [];
         let resolved = 0;
         await new Promise(resolve => {
             $('table.orders td[class="order"]').each(async function (index) {
                 let tr = $(this);
+                let id = tr.children('div').attr('id');
                 const spanWords = tr.children('div').children('span[class="orderSegment orderBegin"]').text();
                 const terr = spanWords.slice(spanWords.split('at')[0].length + 3).trim();
                 const terrID = (await database.getTerritoryByName(gameId, terr)).ID;
                 let finder = new PathFinding(database, agent, gameId, terrID, -countryID, spanWords.split(' ')[1].trim());
                 await finder.init(true, page);
                 await finder.findClosestSupply(terrID, countryID, index).then((object) => {
+                    object.forEach(e => { e.divId = id; e.fromId = terrID; });
                     supplies[index] = object;
                     resolved++;
                     if (resolved === orderLength) {
@@ -132,14 +134,9 @@ module.exports = {
 
             await new Promise(resolve => {
                 $('table.orders td[class="order"]').each(async function (index) {
-                    let tr = $(this);
-                    //removes the default selected option
-                    let id = tr.children('div').attr('id');
                     //making the move
-                    if (supplies.find(e => e.index === index) !== undefined &&
-                        supplies.find(e => e.index === index).distance !== 0) {
-                        await page.select(`div#${id} select[ordertype="type"]`, 'Move');
-                        await page.select(`div#${id} span[class="orderSegment toTerrID"] select`, String(supplies.find(e => e.index === index).id));
+                    if (supplies.find(e => e.index === index) !== undefined) {
+                        supplies = await module.exports.moveLogic(page, supplies, index, countryID);
                     }
                     resolved++;
                     if (resolved === orderLength) {
@@ -147,10 +144,68 @@ module.exports = {
                     }
                 });
             });
-            await page.$eval('input[name="Ready"]', b => b.click());
+            //await page.$eval('input[name="Ready"]', b => b.click());
+            await page.$eval('input[name="Update"]', b => b.click());
             await page.close();
         }
         return supplies.length === 0;
+    },
+
+    moveLogic(page, supplies, index, countryID) {
+        return new Promise(async (resolve) => {
+            if (supplies.find(e => e.index === index).distance !== 0) {
+                let current = supplies.find(e => e.index === index);
+
+                let { owner, units } = await page.evaluate((id) => {
+                    let fromT = window.Territories._object[id].coastParent;
+                    let owner = window.TerrStatus.find(e => e.id === fromT.id);
+                    let units = [];
+                    for (u in window.Units._object) {
+                        u = window.Units._object[u];
+                        let unit = {};
+                        unit.id = u.id;
+                        unit.terrID = u.terrID;
+                        unit.countryID = u.countryID;
+                        unit.moveChoices = u.getMoveChoices();
+                        units.push(unit);
+                    }
+
+                    return { owner: owner, units: units };
+                }, current.id);
+
+                //checking if the territory is occupied by no one or a friendly
+                if (owner !== undefined) {
+                    if (units.find(e => e.id === owner.unitID).countryID !== countryID) {
+                        let total = units.find(e => e.id === owner.unitID).moveChoices.length;
+                        let tries = 0;
+                        await new Promise(async (resolve) => {
+                            units.find(e => e.id === owner.unitID).moveChoices.forEach(async e => {
+                                let friendly = units.find(a => a.terrID != current.fromId
+                                    && a.terrID === e.id && a.countryID === countryID);
+                                console.log(friendly);
+                                if (friendly !== undefined) {
+                                    let order = supplies.find(a => a.id === friendly.terrID);
+                                    await page.select(`div#${order.divId} select[ordertype="type"]`, 'Support move');
+                                    await page.select(`div#${order.divId} span[class="orderSegment toTerrID"] select`, String(current.id));
+                                    await page.select(`div#${order.divId} span[class="orderSegment fromTerrID"] select`, String(current.fromId));
+                                    tries++;
+                                    supplies = supplies.filter(e => e.index === order.index);
+                                    if (total === tries) {
+                                        resolve(supplies);
+                                    }
+                                }
+                            });
+                        });
+                    }
+                } else {
+                    await page.select(`div#${current.divId} select[ordertype="type"]`, 'Move');
+                    await page.select(`div#${current.divId} span[class="orderSegment toTerrID"] select`, String(current.id));
+                    resolve(supplies);
+                }
+            } else {
+                resolve(supplies);
+            }
+        });
     },
 
     saveDataSet(dataSet) {
@@ -165,5 +220,5 @@ module.exports = {
 
     }
 
-    
+
 };

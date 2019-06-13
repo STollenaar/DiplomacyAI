@@ -72,7 +72,7 @@ module.exports = {
 
     async makeMove(site, gameId, page) {
         const $ = cheerio.load(site);
-        countryID = $('span[class*="memberYourCountry"]').attr('class').split(' ')[0].substr(-1);
+        const countryID = $('span[class*="memberYourCountry"]').attr('class').split(' ')[0].substr(-1);
         const orderLength = $('table.orders tbody').children().length;
         let supplies = [];
         let resolved = 0;
@@ -84,7 +84,7 @@ module.exports = {
                 const terrID = (await database.getTerritoryByName(gameId, terr)).ID;
                 let finder = new PathFinding(database, agent, gameId, terrID, -countryID, spanWords.split(' ')[1].trim());
                 await finder.init(true, page);
-                await finder.findClosestEmpty(terrID, countryID, index).then((object) => {
+                await finder.findClosestEmpty(terrID, index).then((object) => {
                     supplies[index] = object.filter(e => e.distance === 1);
                     resolved++;
                     if (resolved === orderLength) {
