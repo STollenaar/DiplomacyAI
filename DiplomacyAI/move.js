@@ -103,6 +103,8 @@ module.exports = {
         const orderLength = $('table.orders tbody').children().length;
         let supplies = [];
         let resolved = 0;
+
+        //finding all closest supply depots
         await new Promise(resolve => {
             $('table.orders td[class="order"]').each(async function (index) {
                 let tr = $(this);
@@ -126,6 +128,7 @@ module.exports = {
         if (debug) {
             module.exports.saveDataSet(supplies);
         }
+        //checking the best combination of moves
         supplies = util.extractLowestDistance(supplies);
         console.log("RESULTS");
         console.log(supplies);

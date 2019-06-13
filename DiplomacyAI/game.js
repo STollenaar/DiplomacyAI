@@ -165,9 +165,7 @@ module.exports = {
                         await builder.makeRandomMove(html, page);
                         break;
                     case "Retreats":
-                        if (await retreater.makeMove(html, gameId, page)) {
-                            await retreater.makeRandomMove(html, page);
-                        }
+                        await retreater.makeMove(html, gameId, page);
                         break;
                 }
 
