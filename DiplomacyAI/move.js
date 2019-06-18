@@ -190,10 +190,14 @@ module.exports = {
                     } else {
                         supplies = await module.exports.supportMove(page, supplies, current, riskCalc, riskType);
                     }
-                } else {
+                } else if (targetStatus === undefined) {
                     //making move into empty territory ignoring the risk
                     await page.select(`div#${current.divId} select[ordertype="type"]`, 'Move');
                     await page.select(`div#${current.divId} span[class="orderSegment toTerrID"] select`, String(current.id));
+                } else {
+                    /*find the second best choice... so.. this involes double backing of what is determined above...
+                        In other words... GOOD LUCK!!
+                    */
                 }
             }
             resolve(supplies);
@@ -201,7 +205,7 @@ module.exports = {
     },
 
     //doing the support move
-        //add way to update the riskNumber
+    //add way to update the riskNumber
     supportMove(page, supplies, current, riskCalc, riskType) {
         return new Promise(async (resolve) => {
             let highestRisk = riskCalc[riskCalc.length - 1];
