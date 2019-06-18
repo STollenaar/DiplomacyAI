@@ -5,7 +5,7 @@ let agent;
 let cheerio;
 let database;
 let config;
-
+let fs;
 
 module.exports = {
     init(init) {
@@ -13,6 +13,7 @@ module.exports = {
         cheerio = init.cheerio;
         database = init.database;
         config = init.config;
+        fs = init.fs;
     },
 
     async makeRandomMove(site, page) {
@@ -206,6 +207,12 @@ module.exports = {
 
     //doing the support move
     //add way to update the riskNumber
+    /*
+        actions [Hold, Move, Support move]
+        => Hold
+            => doing its original thing if that isn't going to the targeted territory
+        [P/Q][Risk][prop/value]
+    */
     supportMove(page, supplies, current, riskCalc, riskType) {
         return new Promise(async (resolve) => {
             let highestRisk = riskCalc[riskCalc.length - 1];

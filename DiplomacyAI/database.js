@@ -3,14 +3,6 @@
 let db = new sqlite.Database('./AI_DB.db');
 
 module.exports = {
-
-    addUser(name, pw, fs, callback) {
-        let object = [];
-        object.push({ 'Username': name, 'Password': pw });
-        let json = JSON.stringify(object);
-        fs.writeFile('./config.json', json, 'utf8', callback);
-    },
-
     getUser(callback) {
         db.serialize(function () {
             db.get(`SELECT * FROM user;`, (err, row) => callback(row));
@@ -85,9 +77,15 @@ module.exports = {
                     'attackOccupiedRisk': rows.attackOccupiedRisk, 'attackEmptyRisk': rows.attackEmptyRisk,
                     'retreatRisk': rows.retreatRisk
                 };
-                let json = JSON.stringify(object);
+                let json = JSON.stringify(object, null, 4);
                 fs.writeFile('./config.json', json, 'utf8', callback);
             });
+        });
+    },
+
+    updateConfig(fs, config) {
+        return new Promise(resolve => {
+            fs.writeFile('./config.json', JSON.stringify(config, null, 4), 'utf8', () => resolve());
         });
     }
 };

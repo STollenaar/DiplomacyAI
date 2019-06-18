@@ -10,27 +10,16 @@ const util = require('./util');
 let url;
 let config;
 let agent = request.agent();
+let input = process.openStdin();
+let site;
 
 fs.stat('./config.json', function (err, stat) {
     if (err === null) {
-        config = require('./config.json');
-        url = config.Site;
-
-        let init = { url: url, agent: agent, cheerio: cheerio, config: config, database: database };
-
-        state.init(init);
-        game.init(init);
-        login();
+        loadConfig();
     } else if (err.code === 'ENOENT') {
         console.log("Deploying config");
         database.defaultConfig(fs, function () {
-            config = require('./config.json');
-            url = config.Site;
-
-            let init = { url: url, agent: agent, cheerio: cheerio, config: config, database: database };
-
-            state.init(init);
-            game.init(init);
+            loadConfig();
         });
     }
 
@@ -39,25 +28,11 @@ fs.stat('./config.json', function (err, stat) {
 
 
 
-
-let userID = 0;
-let input = process.openStdin();
-
-let site;
-
-
-
-
-
 input.addListener("data", async function (d) {
     d = d.toString().trim().split(" ");
 
     switch (d[0]) {
-        case "addUser":
-            //adds a user to the config
-            database.addUser(d[1], d[2], fs);
-            login();
-            break;
+
         case "login":
             //login in
             login(d[1], d[2]);
@@ -65,7 +40,6 @@ input.addListener("data", async function (d) {
         case "logout":
             {
                 //logout
-                const $ = cheerio.load(site);
                 agent.get(`${url}logon.php?logoff=on`).then(function (response) {
                     site = response.text;
                     state.updateSite(site);
@@ -76,6 +50,9 @@ input.addListener("data", async function (d) {
         case "user":
             //debugs prints the current logged in user
             printUser();
+            break;
+        case "config":
+            configOperations(d);
             break;
         case "state":
             //turl = `${url}/cache/games/${smallId}/${bigId}`;
@@ -128,6 +105,38 @@ input.addListener("data", async function (d) {
 
 });
 
+//simple config operations so you don't have to reload everytime...
+async function configOperations(args) {
+    if (args[1] === undefined) {
+        console.log("Argument is undefined... please define an action [reload/set/add]");
+    } else if (args[1].toLowerCase() === "reload") {
+        loadConfig();
+    } else if (args[1].toLowerCase() === "set") {
+        if (args[2] === undefined) {
+            console.log("config field undefined.. please define a field");
+        } else if (args[3] === undefined) {
+            console.log("field value undefined.. please define a field value");
+        } else {
+            config[args[2]] = args[3];
+            await database.updateConfig(fs, config);
+            loadConfig();
+        }
+    } else if (args[1].toLowerCase() === "add") {
+        if (args[2] === undefined) {
+            console.log("config field undefined.. please define a field");
+        } else if (!Array.isArray(config[args[2]])) {
+            console.log("config field is not an array... please set it as an array");
+        } else if (args[3] === undefined) {
+            console.log("field value undefined.. please define a field value");
+        } else {
+            config[args[2]].push(args[3]);
+            await database.updateConfig(fs, config);
+            loadConfig();
+        }
+    } else {
+        console.log("unknown argument...  please define an action [reload/set/add]");
+    }
+}
 
 
 function login(username, password) {
@@ -163,4 +172,15 @@ function printUser() {
     const $ = cheerio.load(site);
     const user = $('#header-welcome').text();
     console.log(user);
+}
+
+function loadConfig() {
+    config = require('./config.json');
+    url = config.Site;
+
+    let init = { url: url, agent: agent, cheerio: cheerio, config: config, database: database, fs: fs };
+
+    state.init(init);
+    game.init(init);
+    login();
 }
