@@ -175,12 +175,12 @@ module.exports = {
                         let targetUnit = units.find(e => e.id === targetStatus.unitID);
                         if (targetUnit.countryID !== countryID) {
                             //calculating the risk of supporting for every option against occupied territory
-                            riskCalc = util.calculateRisk(targetUnit, supplies.filter(s => surrFriendly.map(f => f.terrID).includes(String(s.fromId))), units, config.attackOccupiedRisk);
+                            riskCalc = util.calculateRisk(targetUnit, supplies.filter(s => surrFriendly.map(f => f.terrID).includes(String(s.fromId))), units);
                             riskType = 'attackOccupiedRisk';
                         }
                     } else {
                         //calculating risk of supporting for every option against empty territory
-                        riskCalc = util.calculateRisk(-1, supplies.filter(s => surrFriendly.map(f => f.terrID).includes(String(s.fromId))), units, config.attackEmptyRisk);
+                        riskCalc = util.calculateRisk(-1, supplies.filter(s => surrFriendly.map(f => f.terrID).includes(String(s.fromId))), units);
                         riskType = 'attackEmptyRisk';
                     }
                     if (riskCalc.length === 0) {

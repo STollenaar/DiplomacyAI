@@ -108,12 +108,12 @@ module.exports = {
     },
 
 
-    calculateRisk(targetUnit, surTerr, units, maxRisk) {
+    calculateRisk(targetUnit, surTerr, units) {
         surTerr.forEach(terr => {
             //getting the risk number for supporting
             terr.risk = units.filter(u => u.id !== targetUnit.id && u.moveChoices.includes(String(terr.fromId))).length;
         });
-        surTerr = surTerr.filter(e => e.risk <= maxRisk).sort((a, b) => a.risk - b.risk);
+        surTerr = surTerr.sort((a, b) => a.risk - b.risk);
         return surTerr;
     },
 
