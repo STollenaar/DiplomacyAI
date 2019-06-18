@@ -8,10 +8,10 @@ let database;
 
 
 module.exports = {
-    init(a, c, d) {
-        agent = a;
-        cheerio = c;
-        database = d;
+    init(init) {
+        agent = init.agent;
+        cheerio = init.cheerio;
+        database = init.database;
     },
 
 

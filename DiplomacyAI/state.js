@@ -8,10 +8,10 @@ let site;
 
 module.exports = {
 
-    init(u, a, c, m) {
-        url = u;
-        agent = a;
-        cheerio = c;
+    init(init) {
+        url = init.url;
+        agent = init.agent;
+        cheerio = init.cheerio;
     },
 
     updateSite(s) {

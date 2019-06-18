@@ -19,7 +19,7 @@ module.exports = {
             let xor = _.xorBy(...objects, (e) => e.name.split('(')[0].trim());
             //grouping the duplicates
             let countedXor = _.countBy(_.flatten(xor), e => e.index);
-            countedXor = Object.keys(countedXor).map(e => { return{ "index": parseInt(e), "value": parseInt(countedXor[e]) }; }).filter(e => e.value > 1);
+            countedXor = Object.keys(countedXor).map(e => { return { "index": parseInt(e), "value": parseInt(countedXor[e]) }; }).filter(e => e.value > 1);
             //removing any duplicate indexes just in case
             countedXor.forEach(e => {
                 let xorFil = xor.filter(a => a.index === e.index);
@@ -108,12 +108,39 @@ module.exports = {
     },
 
 
-    calculateRisk(targetUnit, surTerr, units) {
+    calculateRisk(targetUnit, surTerr, units, maxRisk) {
         surTerr.forEach(terr => {
             //getting the risk number for supporting
             terr.risk = units.filter(u => u.id !== targetUnit.id && u.moveChoices.includes(String(terr.fromId))).length;
         });
-        surTerr = surTerr.sort((a, b) => a.risk - b.risk);
+        surTerr = surTerr.filter(e => e.risk <= maxRisk).sort((a, b) => a.risk - b.risk);
         return surTerr;
+    },
+
+    getTargetStatus(page, id) {
+        return new Promise(async (resolve) => {
+            resolve(await page.evaluate((id) => {
+                let fromT = window.Territories._object[id].coastParent;
+                let owner = window.TerrStatus.find(e => e.id === fromT.id);
+
+                return owner;
+            }, id));
+        });
+    },
+
+    getUnits(page) {
+        return new Promise(async (resolve) => {
+            resolve(await page.evaluate(() => {
+                let units = [];
+                //constructing serializable object
+                for (u in window.Units._object) {
+                    u = window.Units._object[u];
+                    let unit = { id: u.id, terrID: u.terrID, countryID: u.countryID, moveChoices: u.getMoveChoices() };
+                    units.push(unit);
+                }
+
+                return units;
+            }));
+        });
     }
 };

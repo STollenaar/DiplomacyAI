@@ -4,14 +4,15 @@ const util = require('./util');
 let agent;
 let cheerio;
 let database;
-
+let config;
 
 
 module.exports = {
-    init(a, c, d) {
-        agent = a;
-        cheerio = c;
-        database = d;
+    init(init) {
+        agent = init.agent;
+        cheerio = init.cheerio;
+        database = init.database;
+        config = init.config;
     },
 
     async makeRandomMove(site, page) {
@@ -159,62 +160,70 @@ module.exports = {
             if (supplies.find(e => e.index === index).distance !== 0) {
                 let current = supplies.find(e => e.index === index);
 
-                let { targetStatus, units } = await page.evaluate((id) => {
-                    let fromT = window.Territories._object[id].coastParent;
-                    let owner = window.TerrStatus.find(e => e.id === fromT.id);
-                    let units = [];
-                    //constructing serializable object
-                    for (u in window.Units._object) {
-                        u = window.Units._object[u];
-                        let unit = { id: u.id, terrID: u.terrID, countryID: u.countryID, moveChoices: u.getMoveChoices() };
-                        units.push(unit);
-                    }
-
-                    return { targetStatus: owner, units: units };
-                }, current.id);
-
-                //checking if the territory is occupied by no one or a friendly
-                if (targetStatus !== undefined) {
-                    let targetUnit = units.find(e => e.id === targetStatus.unitID);
-                    if (targetUnit.countryID !== countryID) {
-
-                        //finding friendly unit to help getting to the other territory
-                        let surrFriendly = units.filter(a => a.moveChoices.includes(String(current.id))
-                            && a.countryID === countryID);
-                        if (surrFriendly !== undefined) {
-                            //calculating the risk of supporting for every option
-                            let riskCalc = util.calculateRisk(targetUnit, supplies.filter(s => surrFriendly.map(f => f.terrID).includes(String(s.fromId))), units);
-                            let highestRisk = riskCalc[riskCalc.length - 1];
-                            let total = riskCalc.length;
-                            let tries = 0;
-                            await new Promise(async (r) => {
-                                riskCalc.forEach(async (value, index) => {
-                                    if (index === riskCalc.length - 1) {
-                                        //making move
-                                        await page.select(`div#${value.divId} select[ordertype="type"]`, 'Move');
-                                        await page.select(`div#${value.divId} span[class="orderSegment toTerrID"] select`, String(current.id));
-                                        supplies = supplies.filter(e => e.index !== value.index);
-                                    } else {
-                                        await page.select(`div#${value.divId} select[ordertype="type"]`, 'Support move');
-                                        await page.select(`div#${value.divId} span[class="orderSegment toTerrID"] select`, String(current.id));
-                                        await page.select(`div#${value.divId} span[class="orderSegment fromTerrID"] select`, String(highestRisk.fromId));
-                                        supplies = supplies.filter(e => e.index !== value.index);
-                                    }
-                                    tries++;
-                                    if (total === tries) {
-                                        r(supplies);
-                                    }
-                                });
-                            });
+                let { targetStatus, units } = {
+                    targetStatus: await util.getTargetStatus(page, current.id),
+                    units: await util.getUnits(page)
+                };
+                //finding friendly unit to help getting to the other territory
+                let surrFriendly = units.filter(a => a.moveChoices.includes(String(current.id))
+                    && a.countryID === countryID);
+                if (surrFriendly !== undefined) {
+                    //checking if the territory is occupied by no one or a friendly
+                    let riskCalc = 0;
+                    if (targetStatus !== undefined) {
+                        let targetUnit = units.find(e => e.id === targetStatus.unitID);
+                        if (targetUnit.countryID !== countryID) {
+                            //calculating the risk of supporting for every option against occupied territory
+                            riskCalc = util.calculateRisk(targetUnit, supplies.filter(s => surrFriendly.map(f => f.terrID).includes(String(s.fromId))), units, config.attackOccupiedRisk);
                         }
+                    } else {
+                        //calculating risk of supporting for every option against empty territory
+                        riskCalc = util.calculateRisk(-1, supplies.filter(s => surrFriendly.map(f => f.terrID).includes(String(s.fromId))), units, config.attackEmptyRisk);
+                    }
+                    if (riskCalc.length === 0) {
+                        //making move into empty territory
+                        await page.select(`div#${current.divId} select[ordertype="type"]`, 'Move');
+                        await page.select(`div#${current.divId} span[class="orderSegment toTerrID"] select`, String(current.id));
+                    } else {
+                        supplies = await module.exports.supportMove(page, supplies, current, riskCalc);
                     }
                 } else {
-                    //making move into empty territory
-                    await page.select(`div#${current.divId} select[ordertype="type"]`, 'Move');
-                    await page.select(`div#${current.divId} span[class="orderSegment toTerrID"] select`, String(current.id));
+                    let riskCalc = util.calculateRisk(-1, supplies, units, config.attackEmptyRisk);
+                    if (riskCalc.length === 0) {
+                        //making move into empty territory
+                        await page.select(`div#${current.divId} select[ordertype="type"]`, 'Move');
+                        await page.select(`div#${current.divId} span[class="orderSegment toTerrID"] select`, String(current.id));
+                    }
                 }
             }
             resolve(supplies);
+        });
+    },
+
+
+    supportMove(page, supplies, current, riskCalc) {
+        return new Promise(async (resolve) => {
+            let highestRisk = riskCalc[riskCalc.length - 1];
+            let total = riskCalc.length;
+            let tries = 0;
+
+            riskCalc.forEach(async (value, index) => {
+                if (index === riskCalc.length - 1) {
+                    //making move
+                    await page.select(`div#${value.divId} select[ordertype="type"]`, 'Move');
+                    await page.select(`div#${value.divId} span[class="orderSegment toTerrID"] select`, String(current.id));
+                    supplies = supplies.filter(e => e.index !== value.index);
+                } else {
+                    await page.select(`div#${value.divId} select[ordertype="type"]`, 'Support move');
+                    await page.select(`div#${value.divId} span[class="orderSegment toTerrID"] select`, String(current.id));
+                    await page.select(`div#${value.divId} span[class="orderSegment fromTerrID"] select`, String(highestRisk.fromId));
+                    supplies = supplies.filter(e => e.index !== value.index);
+                }
+                tries++;
+                if (total === tries) {
+                    resolve(supplies);
+                }
+            });
         });
     },
 

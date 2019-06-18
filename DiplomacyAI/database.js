@@ -80,8 +80,11 @@ module.exports = {
     defaultConfig(fs, callback) {
         db.serialize(function () {
             db.get(`SELECT * FROM config;`, (err, rows) => {
-                let object = [];
-                object.push({ 'Username': rows.Username, 'Password': rows.Pw, 'Site': rows.Site });
+                let object = {
+                    'Username': rows.Username, 'Password': rows.Pw, 'Site': rows.Site,
+                    'attackOccupiedRisk': rows.attackOccupiedRisk, 'attackEmptyRisk': rows.attackEmptyRisk,
+                    'retreatRisk': rows.retreatRisk
+                };
                 let json = JSON.stringify(object);
                 fs.writeFile('./config.json', json, 'utf8', callback);
             });

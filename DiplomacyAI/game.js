@@ -15,15 +15,15 @@ let runnable;
 
 module.exports = {
 
-    init(u, a, d, c) {
-        url = u;
-        agent = a;
-        database = d;
-        config = c;
+    init(init) {
+        url = init.url;
+        agent = init.agent;
+        database = init.database;
+        config = init.config;
 
-        move.init(a, cheerio, d);
-        builder.init(a, cheerio, d);
-        retreater.init(a, cheerio, d);
+        move.init(init);
+        builder.init(init);
+        retreater.init(init);
     },
 
     //starting the autocheck
