@@ -170,38 +170,39 @@ module.exports = {
                 if (surrFriendly !== undefined) {
                     //checking if the territory is occupied by no one or a friendly
                     let riskCalc = 0;
+                    let riskType;
                     if (targetStatus !== undefined) {
                         let targetUnit = units.find(e => e.id === targetStatus.unitID);
                         if (targetUnit.countryID !== countryID) {
                             //calculating the risk of supporting for every option against occupied territory
                             riskCalc = util.calculateRisk(targetUnit, supplies.filter(s => surrFriendly.map(f => f.terrID).includes(String(s.fromId))), units, config.attackOccupiedRisk);
+                            riskType = 'attackOccupiedRisk';
                         }
                     } else {
                         //calculating risk of supporting for every option against empty territory
                         riskCalc = util.calculateRisk(-1, supplies.filter(s => surrFriendly.map(f => f.terrID).includes(String(s.fromId))), units, config.attackEmptyRisk);
+                        riskType = 'attackEmptyRisk';
                     }
                     if (riskCalc.length === 0) {
                         //making move into empty territory
                         await page.select(`div#${current.divId} select[ordertype="type"]`, 'Move');
                         await page.select(`div#${current.divId} span[class="orderSegment toTerrID"] select`, String(current.id));
                     } else {
-                        supplies = await module.exports.supportMove(page, supplies, current, riskCalc);
+                        supplies = await module.exports.supportMove(page, supplies, current, riskCalc, riskType);
                     }
                 } else {
-                    let riskCalc = util.calculateRisk(-1, supplies, units, config.attackEmptyRisk);
-                    if (riskCalc.length === 0) {
-                        //making move into empty territory
-                        await page.select(`div#${current.divId} select[ordertype="type"]`, 'Move');
-                        await page.select(`div#${current.divId} span[class="orderSegment toTerrID"] select`, String(current.id));
-                    }
+                    //making move into empty territory ignoring the risk
+                    await page.select(`div#${current.divId} select[ordertype="type"]`, 'Move');
+                    await page.select(`div#${current.divId} span[class="orderSegment toTerrID"] select`, String(current.id));
                 }
             }
             resolve(supplies);
         });
     },
 
-
-    supportMove(page, supplies, current, riskCalc) {
+    //doing the support move
+        //add way to update the riskNumber
+    supportMove(page, supplies, current, riskCalc, riskType) {
         return new Promise(async (resolve) => {
             let highestRisk = riskCalc[riskCalc.length - 1];
             let total = riskCalc.length;
