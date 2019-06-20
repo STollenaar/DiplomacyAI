@@ -24,7 +24,7 @@ module.exports = {
             countedXor.forEach(e => {
                 let xorFil = xor.filter(a => a.index === e.index);
                 while (e.value > 1) {
-                    let objectToRemove = xorFil[Math.floor(Math.random() * Math.floor(xorFil.length))];
+                    let objectToRemove = xorFil[Math.floor(Math.random() * xorFil.length)];
                     xor = xor.filter(a => a.id !== objectToRemove.id);
                     xorFil = xor.filter(a => a.id !== objectToRemove.id);
                     e.value--;
@@ -59,7 +59,7 @@ module.exports = {
                     countedXor.forEach(e => {
                         let xorFil = xorDup.filter(a => a.index === e.index);
                         while (e.value > 1) {
-                            let objectToRemove = xorFil[Math.floor(Math.random() * Math.floor(xorFil.length))];
+                            let objectToRemove = xorFil[Math.floor(Math.random() * xorFil.length)];
                             xorDup = xorDup.filter(a => a.id !== objectToRemove.id);
                             xorFil = xorDup.filter(a => a.id !== objectToRemove.id);
                             e.value--;
@@ -107,12 +107,18 @@ module.exports = {
         return results;
     },
 
+    calculateTargetRisk(targetID, units, countryID) {
+        return units.filter(u => u.moveChoices.includes(targetID) && u.countryID !== countryID).length;
+    },
 
-    calculateRisk(targetUnit, surTerr, units) {
+    //gets the surrounding able to help friendly units with calculated risk
+    getSurrFriendly(targetUnit, surTerr, units,toId, countryID) {
         surTerr.forEach(terr => {
             //getting the risk number for supporting
-            terr.risk = units.filter(u => u.id !== targetUnit.id && u.moveChoices.includes(String(terr.fromId))).length;
+            terr.risk = units.filter(u => u.id !== targetUnit.id && u.moveChoices.includes(String(terr.fromId))
+                && u.countryID !== countryID).length;
         });
+        surTerr = surTerr.filter(t => units.find(u => u.terrID === String(t.fromId)).moveChoices.includes(toId));
         surTerr = surTerr.sort((a, b) => a.risk - b.risk);
         return surTerr;
     },
@@ -142,5 +148,16 @@ module.exports = {
                 return units;
             }));
         });
+    },
+
+    initLearning(field, index, actions, config) {
+        config[field].Q[index] = [];
+        config[field].P[index] = [];
+        for (let i = 0; i < actions.length; i++) {
+            config[field].Q[index].push(config.initialValue);
+            config[field].P[index].push(1 / actions.length);
+        }
     }
+
+
 };

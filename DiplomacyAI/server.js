@@ -117,7 +117,11 @@ async function configOperations(args) {
         } else if (args[3] === undefined) {
             console.log("field value undefined.. please define a field value");
         } else {
-            config[args[2]] = args[3];
+            try {
+                config[args[2]] = JSON.parse(args.slice(3).join(''));
+            } catch (e) {
+                config[args[2]] = args.slice(3).join('');
+            }
             await database.updateConfig(fs, config);
             loadConfig();
         }
@@ -129,11 +133,18 @@ async function configOperations(args) {
         } else if (args[3] === undefined) {
             console.log("field value undefined.. please define a field value");
         } else {
-            config[args[2]].push(args[3]);
+            try {
+                config[args[2]].push(JSON.parse(args.slice(3).join('')));
+            } catch (e) {
+                config[args[2]].push(args.slice(3).join(''));
+            }
             await database.updateConfig(fs, config);
             loadConfig();
         }
-    } else {
+    } else if (args[1].toLowerCase() === "dump") {
+        console.log(`///CONFIG DUMP\\\\`);
+    }
+    else {
         console.log("unknown argument...  please define an action [reload/set/add]");
     }
 }

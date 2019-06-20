@@ -53,7 +53,7 @@ module.exports = {
         });
     },
 
-    getBorders(gameID, OwnID, type, callback) {
+    getBordersRestricted(gameID, OwnID, type) {
         if (type.toLowerCase() === "army") {
             return new Promise(function (resolve, reject) {
                 db.serialize(function () {
@@ -67,6 +67,14 @@ module.exports = {
                 });
             });
         }
+    },
+
+    getBorders(gameID, OwnID) {
+        return new Promise(function (resolve, reject) {
+            db.serialize(function () {
+                db.all(`SELECT * FROM borders WHERE gameID=${gameID} AND ownID=${OwnID};`, (err, rows) => resolve(rows));
+            });
+        });
     },
 
     defaultConfig(fs, callback) {
