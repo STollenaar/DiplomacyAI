@@ -4,20 +4,20 @@ let db = new sqlite.Database('./AI_DB.db');
 
 module.exports = {
     getUser(callback) {
-        db.serialize(function () {
+        db.serialize(() => {
             db.get(`SELECT * FROM user;`, (err, row) => callback(row));
         });
     },
 
     addGame(user, game) {
-        db.serialize(function () {
+        db.serialize(() => {
             db.run(`INSERT INTO games ('username', 'gameID') VALUES ('${user}', ${game});`);
         });
     },
 
     getGames(user) {
-        return new Promise(function (resolve, reject) {
-            db.serialize(function () {
+        return new Promise(resolve => {
+            db.serialize(() => {
                 db.all(`SELECT gameID FROM games WHERE username='${user}';`, (err, rows) => {
                     resolve(rows);
                 });
@@ -26,43 +26,43 @@ module.exports = {
     },
 
     addTerritory(gameID, id, name, type, supply) {
-        db.serialize(function () {
+        db.serialize(() => {
             db.run(`INSERT INTO territories ('gameID','ID', 'name', 'type', 'supply') VALUES (${gameID}, ${id}, '${name}', '${type}', '${supply}');`);
         });
     },
 
     getTerritoryByID(gameID, id) {
-        return new Promise(function (resolve, reject) {
-            db.serialize(function () {
+        return new Promise(resolve => {
+            db.serialize(() => {
                 db.get(`SELECT * FROM territories WHERE gameID=${gameID} AND ID=${id};`, (err, row) => resolve(row));
             });
         });
     },
 
     getTerritoryByName(gameID, name) {
-        return new Promise(function (resolve, reject) {
-            db.serialize(function () {
+        return new Promise(resolve => {
+            db.serialize(() => {
                 db.get(`SELECT * FROM territories WHERE gameID=${gameID} AND name='${name}';`, (err, row) => resolve(row));
             });
         });
     },
 
     addBorder(gameID, OwnID, BorderID, armyPass, fleetPass) {
-        db.serialize(function () {
+        db.serialize(() => {
             db.run(`INSERT INTO borders ('gameID', 'ownID', 'borderID', 'armyPass', 'fleetPass') VALUES (${gameID}, ${OwnID}, ${BorderID}, '${armyPass}', '${fleetPass}');`);
         });
     },
 
     getBordersRestricted(gameID, OwnID, type) {
         if (type.toLowerCase() === "army") {
-            return new Promise(function (resolve, reject) {
-                db.serialize(function () {
+            return new Promise(resolve => {
+                db.serialize(() => {
                     db.all(`SELECT * FROM borders WHERE gameID=${gameID} AND ownID=${OwnID} AND armyPass='true';`, (err, rows) => resolve(rows));
                 });
             });
         } else {
-            return new Promise(function (resolve, reject) {
-                db.serialize(function () {
+            return new Promise(resolve => {
+                db.serialize(() => {
                     db.all(`SELECT * FROM borders WHERE gameID=${gameID} AND ownID=${OwnID} AND fleetPass='true';`, (err, rows) => resolve(rows));
                 });
             });
@@ -70,15 +70,35 @@ module.exports = {
     },
 
     getBorders(gameID, OwnID) {
-        return new Promise(function (resolve, reject) {
-            db.serialize(function () {
+        return new Promise(resolve => {
+            db.serialize(() => {
                 db.all(`SELECT * FROM borders WHERE gameID=${gameID} AND ownID=${OwnID};`, (err, rows) => resolve(rows));
             });
         });
     },
 
+    generateEpisode(gameId, phase, field, pq, risk, numSupport, numActions) {
+        db.serialize(() => {
+            db.run(`INSERT INTO episodes ('gameID','phase', 'configField', 'PQ', 'risk', 'numSupport', 'numActions') VALUES (${gameId}, '${phase}', '${field}','${pq}', ${risk}, ${numSupport}, ${numActions});`);
+        });
+    },
+
+    getEpisodes(gameId) {
+        return new Promise(resolve => {
+            db.serialize(() => {
+                db.all(`SELECT * FROM episodes WHERE gameID=${gameId};`, (err, rows) => resolve(rows));
+            });
+        });
+    },
+
+    removeEpisodes(gameId, phase) {
+        db.serialize(() => {
+            db.run(`DELETE FROM episodes WHERE gameID=${gameId} AND phase='${phase}';`);
+        });
+    },
+
     defaultConfig(fs, callback) {
-        db.serialize(function () {
+        db.serialize(() => {
             db.get(`SELECT * FROM config;`, (err, rows) => {
                 let object = {
                     'Username': rows.Username, 'Password': rows.Pw, 'Site': rows.Site,

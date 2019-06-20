@@ -194,42 +194,6 @@ module.exports = {
                             break;
                     }
                 }
-
-                ////finding friendly unit to help getting to the other territory
-                //let surrFriendly = units.filter(a => a.moveChoices.includes(String(current.id))
-                //    && a.countryID === countryID);
-                //if (surrFriendly !== undefined) {
-                //    //checking if the territory is occupied by no one or a friendly
-                //    let riskCalc = 0;
-                //    let riskType;
-                //    if (targetStatus !== undefined) {
-                //        let targetUnit = units.find(e => e.id === targetStatus.unitID);
-                //        if (targetUnit.countryID !== countryID) {
-                //            //calculating the risk of supporting for every option against occupied territory
-                //            riskCalc = util.calculateRisk(targetUnit, supplies.filter(s => surrFriendly.map(f => f.terrID).includes(String(s.fromId))), units);
-                //            riskType = 'attackOccupiedRisk';
-                //        }
-                //    } else {
-                //        //calculating risk of supporting for every option against empty territory
-                //        riskCalc = util.calculateRisk(-1, supplies.filter(s => surrFriendly.map(f => f.terrID).includes(String(s.fromId))), units);
-                //        riskType = 'attackEmptyRisk';
-                //    }
-                //    if (riskCalc.length === 0) {
-                //        //making move into empty territory
-                //        await page.select(`div#${current.divId} select[ordertype="type"]`, 'Move');
-                //        await page.select(`div#${current.divId} span[class="orderSegment toTerrID"] select`, String(current.id));
-                //    } else {
-                //        supplies = await module.exports.supportMove(page, supplies, current, riskCalc, riskType);
-                //    }
-                //} else if (targetStatus === undefined) {
-                //    //making move into empty territory ignoring the risk
-                //    await page.select(`div#${current.divId} select[ordertype="type"]`, 'Move');
-                //    await page.select(`div#${current.divId} span[class="orderSegment toTerrID"] select`, String(current.id));
-                //} else {
-                //    /*find the second best choice... so.. this involes double backing of what is determined above...
-                //        In other words... GOOD LUCK!!
-                //    */
-                //}
             }
             resolve(supplies);
         });
@@ -270,17 +234,16 @@ module.exports = {
             });
 
             //getting the maximum policy index
-            let highestSR = Math.max(...surrFriendly.map(s => s.risk)); //highest risk the friendly units have
+            let RP = config.supportMove.P.map(e => { return { index: config.supportMove.P.indexOf(e), value: e }; });
+            RP = RP.filter(e => surrFriendly.map(s => s.risk).includes(e.index)); //filtering only the available risks
 
-            let maxP = Math.max(...config.supportMove.P.map(e => e[0]));
-            maxP = config.supportMove.P.filter(p => p[0] === maxP);
-            maxP = maxP.map(e => maxP.indexOf(e)).filter(e => e <= highestSR);
-            maxP = maxP[Math.floor(Math.random() * maxP.length)];
-            console.log(surrFriendly);
+            let maxP = Math.max(...RP.map(e => e.value[0])); //gets the maximum P value
+            RP.filter(e => e.value[0] === maxP); //filtering all the risks that has the maximum value
+            RP = RP[Math.floor(Math.random() * RP.length)];
+
             //finally getting the unit who is having the move option
-            let move = surrFriendly.filter(s => s.risk === maxP);
-            move = move[Math.floor(Math.random() * move.length)];
-            console.log(maxP, move);
+            let move = surrFriendly.find(s => s.risk === RP.index);
+
             //making the move
             await page.select(`div#${move.divId} select[ordertype="type"]`, 'Move');
             await page.select(`div#${move.divId} span[class="orderSegment toTerrID"] select`, String(current.id));
@@ -299,24 +262,6 @@ module.exports = {
                     resolve(supplies);
                 }
             });
-
-            //riskCalc.forEach(async (value, index) => {
-            //    if (index === riskCalc.length - 1) {
-            //        //making move
-            //        await page.select(`div#${value.divId} select[ordertype="type"]`, 'Move');
-            //        await page.select(`div#${value.divId} span[class="orderSegment toTerrID"] select`, String(current.id));
-            //        supplies = supplies.filter(e => e.index !== value.index);
-            //    } else {
-            //        await page.select(`div#${value.divId} select[ordertype="type"]`, 'Support move');
-            //        await page.select(`div#${value.divId} span[class="orderSegment toTerrID"] select`, String(current.id));
-            //        await page.select(`div#${value.divId} span[class="orderSegment fromTerrID"] select`, String(highestRisk.fromId));
-            //        supplies = supplies.filter(e => e.index !== value.index);
-            //    }
-            //    tries++;
-            //    if (total === tries) {
-            //        resolve(supplies);
-            //    }
-            //});
         });
     },
 
@@ -339,6 +284,44 @@ module.exports = {
         } else {
             let choices = config[field].P[risk].slice(0, maxSurr);
             return choices.indexOf(Math.max(...choices));
+        }
+    },
+
+    updateValues(episode) {
+        //all possible states
+        let states = new Array(self.env.width).fill(new Array(self.env.height).fill(-1));
+        let R = 0;
+        //setting the target R
+        for (let e of episode) { R += e[2] };
+        //going through the episodes
+        for (let t = 0; t < episode.length; t++) {
+            let state = episode[t][0];
+            let action = episode[t][1];
+            //check if state is already visited
+            if (states[state[0]][state[1]] === -1) {
+                states[state[0]][state[1]] = action;
+                //updating the Q value
+                self.Q[state[0]][state[1]][action] = self.Q[state[0]][state[1]][action] + self.config.stepSize * (R - self.Q[state[0]][state[1]][action]);
+            }
+        }
+    },
+
+   updatePolicy(episode) {
+        //going through the episodes
+        for (let ep of episode) {
+            let state = ep[0];
+            //gets the maxactionvalue from that state
+            let maxActionValue = Math.max(...config[episode.field].Q[episode.risk]).toFixed(2);
+            //gets the actions of these maxactionvalues
+            let maxActions = config[episode.field].Q[episode.risk].map((e, i) => e.toFixed(2) === maxActionValue ? i : '').filter(String);
+            //updating the policy
+            for (let a = 0; a < episode.numActions; a++) {
+                if (maxActions.indexOf(a) !== -1) {
+                    self.P[state[0]][state[1]][a] = 1.0 / maxActions.length;
+                } else {
+                    self.P[state[0]][state[1]][a] = 0;
+                }
+            }
         }
     }
 
