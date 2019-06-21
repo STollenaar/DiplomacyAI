@@ -28,7 +28,7 @@ module.exports = {
 
     //starting the autocheck
     startAutoCheck(secondsDelay) {
-        runnable = setInterval(function () { module.exports.canMakeMoves(true); }, secondsDelay * 1000);
+        runnable = setInterval(() => { module.exports.canMakeMoves(true); }, secondsDelay * 1000);
     },
 
     //stopping the autocheck
@@ -68,7 +68,7 @@ module.exports = {
             }
         }
 
-        await page.goto(`${url}/board.php?gameID=${Id}`, { "waitUntil": "load" }).then(async function () {
+        await page.goto(`${url}/board.php?gameID=${Id}`, { "waitUntil": "load" }).then(async () => {
             //creating the mess... aka making a serializable object
             let mess = await page.evaluate(() => {
                 const ar = window.Territories._object;
@@ -147,15 +147,17 @@ module.exports = {
                 await page.setCookie(cookies);
             }
         }
-        await page.goto(`${url}board.php?gameID=${gameId}`, { "waitUntil": "load" }).then(async function () {
+        await page.goto(`${url}board.php?gameID=${gameId}`, { "waitUntil": "load" }).then(async () => {
 
             const html = await page.content();
             const $ = cheerio.load(html);
             if ($('div.memberUserDetail').text().includes('No orders submitted!') || $('div.memberUserDetail').text().includes('but not ready for next turn')) {
                 console.log(`Making a move for game: ${gameId}`);
+                let phase = $('span[class="gamePhase"]').text();
 
+                await updateLearning(gameId, phase);
                 //switching between the different phases
-                switch ($('span[class="gamePhase"]').text()) {
+                switch (phase) {
                     case "Diplomacy":
                         if (await move.makeMove(html, gameId, page, debug)) {
                             await move.makeRandomMove(html, page);
@@ -172,5 +174,38 @@ module.exports = {
                 console.log(`Done making a move for game: ${gameId}`);
             }
         });
+    },
+
+    async updateLearning(gameId, phase) {
+        let episodes = await database.getEpisode(gameId);
+        if (episodes !== undefined && episodes[0].phase !== phase) {
+            //do the update
+            for (let episode of episodes) {
+                this.updateValues(episode, 0);
+                this.updatePolicy(episode);
+            }
+            await database.removeEpisodes(gameId, episodes[0].phase);
+            await database.updateConfig(fs, config);
+        }
+    },
+
+    updateValues(episode, R) {
+        //updating the Q value
+        config[episode.configField].Q[episode.risk][episode.action] = config[episode.configField].Q[episode.risk][episode.action] + config.stepSize * (R - config[episode.configField].Q[episode.risk][episode.action]);
+    },
+
+    updatePolicy(episode) {
+        //gets the maxactionvalue from that state
+        let maxActionValue = Math.max(...config[episode.configField].Q[episode.risk]).toFixed(2);
+        //gets the actions of these maxactionvalues
+        let maxActions = config[episode.configField].Q[episode.risk].map((e, i) => e.toFixed(2) === maxActionValue ? i : '').filter(String);
+        //updating the policy
+        for (let a = 0; a < episode.numActions; a++) {
+            if (maxActions.indexOf(a) !== -1) {
+                config[episode.configField].P[episode.risk][a] = 1.0 / maxActions.length;
+            } else {
+                config[episode.configField].P[episode.risk][a] = 0;
+            }
+        }
     }
 };

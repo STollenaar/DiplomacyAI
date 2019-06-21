@@ -24,7 +24,7 @@ module.exports = {
         await new Promise(resolve => {
             let results = 0;
             let total = $('table.orders tbody').children().length;
-            $('table.orders td[class="order"]').each(async function () {
+            $('table.orders td[class="order"]').each(async () => {
                 let tr = $(this);
                 //removes the default selected option
                 const id = tr.children('div').attr('id');
@@ -111,7 +111,7 @@ module.exports = {
 
         //finding all closest supply depots
         await new Promise(resolve => {
-            $('table.orders td[class="order"]').each(async function (index) {
+            $('table.orders td[class="order"]').each(async (index) => {
                 let tr = $(this);
                 let id = tr.children('div').attr('id');
                 const spanWords = tr.children('div').children('span[class="orderSegment orderBegin"]').text();
@@ -141,7 +141,7 @@ module.exports = {
         if (supplies.length !== 0) {
 
             await new Promise(resolve => {
-                $('table.orders td[class="order"]').each(async function (index) {
+                $('table.orders td[class="order"]').each(async (index) => {
                     //making the move
                     if (supplies.find(e => e.index === index) !== undefined) {
                         supplies = await module.exports.moveLogic(page, supplies, index, countryID);
@@ -285,45 +285,5 @@ module.exports = {
             let choices = config[field].P[risk].slice(0, maxSurr);
             return choices.indexOf(Math.max(...choices));
         }
-    },
-
-    updateValues(episode) {
-        //all possible states
-        let states = new Array(self.env.width).fill(new Array(self.env.height).fill(-1));
-        let R = 0;
-        //setting the target R
-        for (let e of episode) { R += e[2] };
-        //going through the episodes
-        for (let t = 0; t < episode.length; t++) {
-            let state = episode[t][0];
-            let action = episode[t][1];
-            //check if state is already visited
-            if (states[state[0]][state[1]] === -1) {
-                states[state[0]][state[1]] = action;
-                //updating the Q value
-                self.Q[state[0]][state[1]][action] = self.Q[state[0]][state[1]][action] + self.config.stepSize * (R - self.Q[state[0]][state[1]][action]);
-            }
-        }
-    },
-
-   updatePolicy(episode) {
-        //going through the episodes
-        for (let ep of episode) {
-            let state = ep[0];
-            //gets the maxactionvalue from that state
-            let maxActionValue = Math.max(...config[episode.field].Q[episode.risk]).toFixed(2);
-            //gets the actions of these maxactionvalues
-            let maxActions = config[episode.field].Q[episode.risk].map((e, i) => e.toFixed(2) === maxActionValue ? i : '').filter(String);
-            //updating the policy
-            for (let a = 0; a < episode.numActions; a++) {
-                if (maxActions.indexOf(a) !== -1) {
-                    self.P[state[0]][state[1]][a] = 1.0 / maxActions.length;
-                } else {
-                    self.P[state[0]][state[1]][a] = 0;
-                }
-            }
-        }
     }
-
-
 };
