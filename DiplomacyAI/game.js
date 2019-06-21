@@ -153,7 +153,7 @@ module.exports = {
             const $ = cheerio.load(html);
             if ($('div.memberUserDetail').text().includes('No orders submitted!') || $('div.memberUserDetail').text().includes('but not ready for next turn')) {
                 console.log(`Making a move for game: ${gameId}`);
-                let phase = $('span[class="gamePhase"]').text();
+                const phase = $('span[class="gamePhase"]').text();
 
                 await updateLearning(gameId, phase);
                 //switching between the different phases

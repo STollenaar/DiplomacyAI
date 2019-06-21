@@ -106,6 +106,7 @@ module.exports = {
         const $ = cheerio.load(site);
         const countryID = $('span[class*="memberYourCountry"]').attr('class').split(' ')[0].substr(-1);
         const orderLength = $('table.orders tbody').children().length;
+        const phase = $('span[class="gamePhase"]').text();
         let supplies = [];
         let resolved = 0;
 
@@ -144,7 +145,7 @@ module.exports = {
                 $('table.orders td[class="order"]').each(async (index) => {
                     //making the move
                     if (supplies.find(e => e.index === index) !== undefined) {
-                        supplies = await module.exports.moveLogic(page, supplies, index, countryID);
+                        supplies = await module.exports.moveLogic(page, supplies, index, countryID, gameId, phase);
                     }
                     resolved++;
                     if (resolved === orderLength) {
@@ -159,7 +160,7 @@ module.exports = {
     },
 
     //added more logic to making a move, seeing if a move needs support for it
-    moveLogic(page, supplies, index, countryID) {
+    moveLogic(page, supplies, index, countryID, gameId, phase) {
         return new Promise(async (resolve) => {
             if (supplies.find(e => e.index === index).distance !== 0) {
                 let current = supplies.find(e => e.index === index);
@@ -180,8 +181,10 @@ module.exports = {
                         util.initLearning("attackRisk", targetRisk, normalActions, config);
                         await database.updateConfig(fs, config);
                     }
-                    console.log(normalActions[module.exports.selectActionFromPolicy("attackRisk", targetRisk)]);
-                    switch (normalActions[module.exports.selectActionFromPolicy("attackRisk", targetRisk)]) {
+                    let action = module.exports.selectActionFromPolicy("attackRisk", targetRisk);
+                    console.log(normalActions[action]);
+                    database.generateEpisode(gameId, phase, "attackRisk", targetRisk, action, normalActions.length);
+                    switch (normalActions[action]) {
                         case "Ignore":
                             await page.select(`div#${current.divId} select[ordertype="type"]`, 'Move');
                             await page.select(`div#${current.divId} span[class="orderSegment toTerrID"] select`, String(current.id));

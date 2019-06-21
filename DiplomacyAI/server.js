@@ -108,7 +108,7 @@ input.addListener("data", async function (d) {
 //simple config operations so you don't have to reload everytime...
 async function configOperations(args) {
     if (args[1] === undefined) {
-        console.log("Argument is undefined... please define an action [reload/set/add]");
+        console.log("Argument is undefined... please define an action [reload/set/add/dump]");
     } else if (args[1].toLowerCase() === "reload") {
         loadConfig();
     } else if (args[1].toLowerCase() === "set") {
