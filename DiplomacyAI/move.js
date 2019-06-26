@@ -107,6 +107,8 @@ module.exports = {
         const countryID = $('span[class*="memberYourCountry"]').attr('class').split(' ')[0].substr(-1);
         const orderLength = $('table.orders tbody').children().length;
         const phase = $('span[class="gamePhase"]').text();
+
+
         let supplies = [];
         let resolved = 0;
 
@@ -118,10 +120,14 @@ module.exports = {
                 const spanWords = tr.children('div').children('span[class="orderSegment orderBegin"]').text();
                 const terr = spanWords.slice(spanWords.split('at')[0].length + 3).trim();
                 const terrID = (await database.getTerritoryByName(gameId, terr)).ID;
+                const coastalParentID = await util.getCoastalParentId(page, terrID);
+
+                const unitId = await util.getUnits(page).find(u => u.terrID === coastalParentID);
+
                 let finder = new PathFinding(database, agent, gameId, terrID, -countryID, spanWords.split(' ')[1].trim());
                 await finder.init(true, page);
                 await finder.findClosestSupply(terrID, countryID, index).then((object) => {
-                    object.forEach(e => { e.divId = id; e.fromId = terrID; });
+                    object.forEach(e => { e.divId = id; e.fromId = terrID; e.unitId = unitId; });
                     supplies[index] = object;
                     resolved++;
                     if (resolved === orderLength) {
@@ -183,7 +189,7 @@ module.exports = {
                     }
                     let action = module.exports.selectActionFromPolicy("attackRisk", targetRisk);
                     console.log(normalActions[action]);
-                    database.generateEpisode(gameId, phase, "attackRisk", targetRisk, action, normalActions.length);
+                    database.generateEpisode(gameId, phase, "attackRisk", targetRisk, action, normalActions.length, current.unitId, normalActions[action], current.id);
                     switch (normalActions[action]) {
                         case "Ignore":
                             await page.select(`div#${current.divId} select[ordertype="type"]`, 'Move');
@@ -250,6 +256,7 @@ module.exports = {
             //making the move
             await page.select(`div#${move.divId} select[ordertype="type"]`, 'Move');
             await page.select(`div#${move.divId} span[class="orderSegment toTerrID"] select`, String(current.id));
+            database.generateEpisode(gameId, phase, "supportMove", move.risk, 0, 2, move.unitId, "Move", current.id);
             surrFriendly = surrFriendly.filter(s => s.index !== move.index);
 
             let total = surrFriendly.length;
@@ -260,6 +267,7 @@ module.exports = {
                 await page.select(`div#${value.divId} span[class="orderSegment toTerrID"] select`, String(current.id));
                 await page.select(`div#${value.divId} span[class="orderSegment fromTerrID"] select`, String(move.fromId));
                 supplies = supplies.filter(e => e.index !== value.index);
+                database.generateEpisode(gameId, phase, "supportMove", move.risk, 1, 2, value.unitId, "Support move", current.id);
                 tries++;
                 if (total === tries) {
                     resolve(supplies);

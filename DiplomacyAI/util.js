@@ -150,6 +150,14 @@ module.exports = {
         });
     },
 
+    getCoastalParentId(page, id) {
+        return new Promise(async resolve => {
+            resolve(await page.evaluate((id) => {
+                return window.Territories._object[id].coastParent.id;
+            }, id));
+        });
+    },
+
     initLearning(field, index, actions, config) {
         config[field].Q[index] = [];
         config[field].P[index] = [];
@@ -159,5 +167,5 @@ module.exports = {
         }
     }
 
-
+   
 };

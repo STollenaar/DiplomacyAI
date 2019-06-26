@@ -77,9 +77,9 @@ module.exports = {
         });
     },
 
-    generateEpisode(gameId, phase, field, risk, action, numActions) {
+    generateEpisode(gameId, phase, field, risk, action, numActions, unitId, moveType, targetId) {
         db.serialize(() => {
-            db.run(`INSERT INTO episodes ('gameID','phase', 'configField', 'risk', 'action', 'numActions') VALUES (${gameId}, '${phase}', '${field}', ${risk}, ${action}, ${numActions});`);
+            db.run(`INSERT INTO episodes ('gameID','phase', 'configField', 'risk', 'action', 'numActions', 'unitId', 'moveType', 'targetId') VALUES (${gameId}, '${phase}', '${field}', ${risk}, ${action}, ${numActions}, '${unitId}', '${moveType}', '${targetId}');`);
         });
     },
 

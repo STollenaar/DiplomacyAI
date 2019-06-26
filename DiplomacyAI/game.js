@@ -155,7 +155,7 @@ module.exports = {
                 console.log(`Making a move for game: ${gameId}`);
                 const phase = $('span[class="gamePhase"]').text();
 
-                await updateLearning(gameId, phase);
+                await module.exports.updateLearning(gameId, phase, page);
                 //switching between the different phases
                 switch (phase) {
                     case "Diplomacy":
@@ -176,12 +176,14 @@ module.exports = {
         });
     },
 
-    async updateLearning(gameId, phase) {
+    async updateLearning(gameId, phase, page) {
         let episodes = await database.getEpisode(gameId);
         if (episodes !== undefined && episodes[0].phase !== phase) {
             //do the update
             for (let episode of episodes) {
-                this.updateValues(episode, 0);
+                let R = await this.checkMoveSuccess(episode, page);
+                R = R ? 1 : -1; //setting reward type, positive for success, negative for failure
+                this.updateValues(episode, R);
                 this.updatePolicy(episode);
             }
             await database.removeEpisodes(gameId, episodes[0].phase);
@@ -206,6 +208,20 @@ module.exports = {
             } else {
                 config[episode.configField].P[episode.risk][a] = 0;
             }
+        }
+    },
+
+    async checkMoveSuccess(episode, page) {
+        const units = await util.getUnits(page);
+        switch (episode.moveType) {
+            case "Hold":
+            case "Move":
+                return units.find(u => u.id === episode.unitId).terrID === episode.targetId;
+            case "Support move":
+            case "Support hold":
+                let unit = units.find(u => u.id === episode.unitId);
+                let terrUnit = units.find(u => u.terrID === episode.targetId);
+                return unit.countryID === terrUnit.countryID;
         }
     }
 };
