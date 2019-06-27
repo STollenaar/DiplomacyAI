@@ -1,6 +1,6 @@
 ﻿const pathfinding = require('./pathFinding');
 const util = require('./util');
-const normalActions = ["Supported", "Ignore", "Hold", "Other"];
+const normalActions = ["Ignore", "Supported", "Hold", "Other"];
 const supportActions = ["Move", "Support move"];
 
 
@@ -105,22 +105,28 @@ module.exports = {
     async makeMove(site, gameId, page, debug) {
         const $ = cheerio.load(site);
         const countryID = $('span[class*="memberYourCountry"]').attr('class').split(' ')[0].substr(-1);
-        const orderLength = $('table.orders tbody').children().length;
+        const phase = $('span[class="gamePhase"]').text();
+
         let supplies = [];
         let resolved = 0;
+        let orderLength = $('table.orders tbody').children().length;
 
         //finding all closest supply depots
         await new Promise(resolve => {
-            $('table.orders td[class="order"]').each(async (index) => {
-                let tr = $(this);
+            $('table.orders td[class="order"]').each(async (index, value) => {
+                let tr = $(value);
                 let id = tr.children('div').attr('id');
                 const spanWords = tr.children('div').children('span[class="orderSegment orderBegin"]').text();
                 const terr = spanWords.slice(spanWords.split('at')[0].length + 3).trim();
                 const terrID = (await database.getTerritoryByName(gameId, terr)).ID;
+                const coastalParentID = await util.getCoastalParentId(page, terrID);
+
+                const unitId = (await util.getUnits(page)).find(u => u.terrID === coastalParentID).id;
+
                 let finder = new PathFinding(database, agent, gameId, terrID, -countryID, spanWords.split(' ')[1].trim());
                 await finder.init(true, page);
                 await finder.findClosestSupply(terrID, countryID, index).then((object) => {
-                    object.forEach(e => { e.divId = id; e.fromId = terrID; });
+                    object.forEach(e => { e.divId = id; e.fromId = terrID; e.unitId = unitId; });
                     supplies[index] = object;
                     resolved++;
                     if (resolved === orderLength) {
@@ -138,63 +144,63 @@ module.exports = {
         console.log("RESULTS");
         console.log(supplies);
         resolved = 0;
+        supplies = supplies.filter(s => s.distance !== 0);
         if (supplies.length !== 0) {
-
             await new Promise(resolve => {
                 $('table.orders td[class="order"]').each(async (index) => {
                     //making the move
                     if (supplies.find(e => e.index === index) !== undefined) {
-                        supplies = await module.exports.moveLogic(page, supplies, index, countryID);
+                        supplies = await module.exports.moveLogic(page, supplies, index, countryID, gameId, phase);
                     }
+                    orderLength = supplies.length;
                     resolved++;
-                    if (resolved === orderLength) {
+                    if (resolved >= orderLength - 1) {
                         resolve();
                     }
                 });
             });
-            //await page.$eval('input[name="Ready"]', b => b.click());
+            await page.$eval('input[name="Ready"]', b => b.click());
             await page.close();
         }
         return supplies.length === 0;
     },
 
     //added more logic to making a move, seeing if a move needs support for it
-    moveLogic(page, supplies, index, countryID) {
+    moveLogic(page, supplies, index, countryID, gameId, phase) {
         return new Promise(async (resolve) => {
-            if (supplies.find(e => e.index === index).distance !== 0) {
-                let current = supplies.find(e => e.index === index);
+            let current = supplies.find(e => e.index === index);
 
-                let { targetStatus, units } = {
-                    targetStatus: await util.getTargetStatus(page, current.id),
-                    units: await util.getUnits(page)
-                };
+            let { targetStatus, units } = {
+                targetStatus: await util.getTargetStatus(page, current.id),
+                units: await util.getUnits(page)
+            };
 
-                let targetRisk = util.calculateTargetRisk(String(current.id), units, countryID);
-                targetStatus !== undefined ? targetRisk++ : targetRisk += 0;
+            let targetRisk = util.calculateTargetRisk(String(current.id), units, countryID);
+            targetStatus !== undefined ? targetRisk++ : targetRisk += 0;
 
-                if (targetRisk === 0) {
+            //if (targetRisk === 0) {
+            //    await page.select(`div#${current.divId} select[ordertype="type"]`, 'Move');
+            //    await page.select(`div#${current.divId} span[class="orderSegment toTerrID"] select`, String(current.id));
+            //} else {
+            if (config.attackRisk.P[targetRisk] === undefined) {
+                util.initLearning("attackRisk", targetRisk, normalActions, config);
+                await database.updateConfig(fs, config);
+            }
+            let action = module.exports.selectActionFromPolicy("attackRisk", targetRisk);
+            database.generateEpisode(gameId, phase, "attackRisk", targetRisk, action, normalActions.length, current.unitId, normalActions[action], current.id);
+            switch (normalActions[action]) {
+                case "Ignore":
                     await page.select(`div#${current.divId} select[ordertype="type"]`, 'Move');
                     await page.select(`div#${current.divId} span[class="orderSegment toTerrID"] select`, String(current.id));
-                } else {
-                    if (config.attackRisk.P[targetRisk] === undefined) {
-                        util.initLearning("attackRisk", targetRisk, normalActions, config);
-                        await database.updateConfig(fs, config);
-                    }
-                    console.log(normalActions[module.exports.selectActionFromPolicy("attackRisk", targetRisk)]);
-                    switch (normalActions[module.exports.selectActionFromPolicy("attackRisk", targetRisk)]) {
-                        case "Ignore":
-                            await page.select(`div#${current.divId} select[ordertype="type"]`, 'Move');
-                            await page.select(`div#${current.divId} span[class="orderSegment toTerrID"] select`, String(current.id));
-                            break;
-                        case "Supported":
-                            supplies = await module.exports.supportMove(page, current, supplies, units, targetStatus, targetRisk, countryID);
-                            break;
-                        case "Other":
-                            //finding next best choise...
-                            break;
-                    }
-                }
+                    break;
+                case "Supported":
+                    supplies = await module.exports.supportMove(page, current, supplies, units, targetStatus, targetRisk, countryID, gameId, phase);
+                    break;
+                case "Other":
+                    //finding next best choise...
+                    break;
             }
+            //}
             resolve(supplies);
         });
     },
@@ -207,13 +213,13 @@ module.exports = {
             => doing its original thing if that isn't going to the targeted territory
         [P/Q][Risk][prop/value]
     */
-    supportMove(page, current, supplies, units, targetStatus, targetRisk, countryID) {
+    supportMove(page, current, supplies, units, targetStatus, targetRisk, countryID, gameId, phase) {
         return new Promise(async (resolve) => {
 
             if (config.neededFriendly.P[targetRisk] === undefined) {
                 util.initLearning("neededFriendly", targetRisk, new Array(55), config);
             }
-            let maxSurroundingTerr = (await database.getBorders(parseInt(page.url().split('=')[1]), current.id)).length;
+            let maxSurroundingTerr = (await database.getBorders(gameId, current.id)).length;
             let surrFriendly;
             if (targetStatus !== undefined) {
                 surrFriendly = util.getSurrFriendly(targetStatus, supplies, units, String(current.id), countryID);
@@ -243,20 +249,23 @@ module.exports = {
 
             //finally getting the unit who is having the move option
             let move = surrFriendly.find(s => s.risk === RP.index);
-
             //making the move
             await page.select(`div#${move.divId} select[ordertype="type"]`, 'Move');
             await page.select(`div#${move.divId} span[class="orderSegment toTerrID"] select`, String(current.id));
+            database.generateEpisode(gameId, phase, "supportMove", move.risk, 0, 2, move.unitId, "Move", current.id);
             surrFriendly = surrFriendly.filter(s => s.index !== move.index);
+
 
             let total = surrFriendly.length;
             let tries = 0;
+
             //having the other support moves
             surrFriendly.forEach(async (value) => {
                 await page.select(`div#${value.divId} select[ordertype="type"]`, 'Support move');
                 await page.select(`div#${value.divId} span[class="orderSegment toTerrID"] select`, String(current.id));
                 await page.select(`div#${value.divId} span[class="orderSegment fromTerrID"] select`, String(move.fromId));
                 supplies = supplies.filter(e => e.index !== value.index);
+                database.generateEpisode(gameId, phase, "supportMove", move.risk, 1, 2, value.unitId, "Support move", current.id);
                 tries++;
                 if (total === tries) {
                     resolve(supplies);

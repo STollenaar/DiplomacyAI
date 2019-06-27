@@ -112,7 +112,7 @@ module.exports = {
     },
 
     //gets the surrounding able to help friendly units with calculated risk
-    getSurrFriendly(targetUnit, surTerr, units,toId, countryID) {
+    getSurrFriendly(targetUnit, surTerr, units, toId, countryID) {
         surTerr.forEach(terr => {
             //getting the risk number for supporting
             terr.risk = units.filter(u => u.id !== targetUnit.id && u.moveChoices.includes(String(terr.fromId))
@@ -141,12 +141,25 @@ module.exports = {
                 //constructing serializable object
                 for (u in window.Units._object) {
                     u = window.Units._object[u];
-                    let unit = { id: u.id, terrID: u.terrID, countryID: u.countryID, moveChoices: u.getMoveChoices() };
+                    console.log(u);
+                    let unit;
+                    try {
+                        unit = { id: u.id,type:u.type, terrID: u.terrID, countryID: u.countryID, moveChoices: u.getMoveChoices() };
+                    } catch (e){
+                        unit = { id: u.id, type: u.type, terrID: u.terrID, countryID: u.countryID, moveChoices: u.getMovableTerritories().map(c =>c.id) };
+                    }
                     units.push(unit);
                 }
-
                 return units;
             }));
+        });
+    },
+
+    getCoastalParentId(page, id) {
+        return new Promise(async resolve => {
+            resolve(await page.evaluate((id) => {
+                return window.Territories._object[id].coastParent.id;
+            }, id));
         });
     },
 

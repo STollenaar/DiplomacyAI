@@ -4,12 +4,14 @@ const cheerio = require('cheerio');
 const move = require('./move');
 const builder = require('./builder');
 const retreater = require('./retreater');
+const util = require('./util');
 
 let url;
 let agent;
 let database;
 let config;
 let game;
+let fs;
 
 let runnable;
 
@@ -20,6 +22,7 @@ module.exports = {
         agent = init.agent;
         database = init.database;
         config = init.config;
+        fs = init.fs;
 
         move.init(init);
         builder.init(init);
@@ -153,38 +156,49 @@ module.exports = {
             const $ = cheerio.load(html);
             if ($('div.memberUserDetail').text().includes('No orders submitted!') || $('div.memberUserDetail').text().includes('but not ready for next turn')) {
                 console.log(`Making a move for game: ${gameId}`);
-                let phase = $('span[class="gamePhase"]').text();
+                const phase = $('span[class="gamePhase"]').text();
 
-                await updateLearning(gameId, phase);
+                await module.exports.updateLearning(gameId, phase, page);
                 //switching between the different phases
-                switch (phase) {
-                    case "Diplomacy":
-                        if (await move.makeMove(html, gameId, page, debug)) {
-                            await move.makeRandomMove(html, page);
-                        }
-                        break;
-                    case "Builds":
-                        await builder.makeRandomMove(html, page);
-                        break;
-                    case "Retreats":
-                        await retreater.makeMove(html, gameId, page);
-                        break;
-                }
+                //switch (phase) {
+                //    case "Diplomacy":
+                //        if (await move.makeMove(html, gameId, page, debug)) {
+                //            await move.makeRandomMove(html, page);
+                //        }
+                //        break;
+                //    case "Builds":
+                //        await builder.makeRandomMove(html, page);
+                //        break;
+                //    case "Retreats":
+                //        await retreater.makeMove(html, gameId, page);
+                //        break;
+                //}
 
                 console.log(`Done making a move for game: ${gameId}`);
             }
         });
     },
 
-    async updateLearning(gameId, phase) {
-        let episodes = await database.getEpisode(gameId);
-        if (episodes !== undefined && episodes[0].phase !== phase) {
+    async updateLearning(gameId, phase, page) {
+        let episodes = await database.getEpisodes(gameId);
+        if (episodes !== undefined && episodes.length !== 0 && episodes[0].phase !== phase) {
             //do the update
             for (let episode of episodes) {
-                this.updateValues(episode, 0);
-                this.updatePolicy(episode);
+                let R = await module.exports.checkMoveSuccess(episode, page);
+                if (episode.moveType === "Supported") {
+                    R =await module.exports.checkMoveSuccess(episodes.find(e => e.unitId === episode.unitId && e.moveType !== episode.moveType), page);
+                }
+                const to = (await database.getTerritoryByID(gameId, episode.targetId)).name;
+                let units = await util.getUnits(page);
+                const unit = units.find(u => u.id === episode.unitId);
+                let color = R ? "\x1b[32m" : "\x1b[31m";
+                console.log(color, `The ${unit.type} ${episode.moveType} to ${to}`);
+                R = R ? 1 : -1; //setting reward type, positive for success, negative for failure
+                module.exports.updateValues(episode, R);
+                module.exports.updatePolicy(episode);
             }
-            await database.removeEpisodes(gameId, episodes[0].phase);
+            console.log("\x1b[0m");
+            //await database.removeEpisodesByPhase(gameId, episodes[0].phase);
             await database.updateConfig(fs, config);
         }
     },
@@ -206,6 +220,20 @@ module.exports = {
             } else {
                 config[episode.configField].P[episode.risk][a] = 0;
             }
+        }
+    },
+
+    async checkMoveSuccess(episode, page) {
+        const units = await util.getUnits(page);
+        switch (episode.moveType) {
+            case "Hold":
+            case "Move":
+                return units.find(u => u.id === episode.unitId).terrID === episode.targetId;
+            case "Support move":
+            case "Support hold":
+                let unit = units.find(u => u.id === episode.unitId);
+                let terrUnit = units.find(u => u.terrID === episode.targetId);
+                return unit.countryID === terrUnit.countryID;
         }
     }
 };

@@ -77,9 +77,15 @@ module.exports = {
         });
     },
 
-    generateEpisode(gameId, phase, field, pq, risk, action, numActions) {
+    generateEpisode(gameId, phase, field, risk, action, numActions, unitId, moveType, targetId) {
         db.serialize(() => {
-            db.run(`INSERT INTO episodes ('gameID','phase', 'configField', 'PQ', 'risk', 'action', 'numActions') VALUES (${gameId}, '${phase}', '${field}','${pq}', ${risk}, ${action}, ${numActions});`);
+            db.get(`SELECT * FROM episodes WHERE gameID=${gameId} AND configField='${field}' AND unitId='${unitId}'`, (err,row) => {
+                if (row === undefined) {
+                    db.run(`INSERT INTO episodes ('gameID','phase', 'configField', 'risk', 'action', 'numActions', 'unitId', 'moveType', 'targetId') VALUES (${gameId}, '${phase}', '${field}', ${risk}, ${action}, ${numActions}, '${unitId}', '${moveType}', '${targetId}');`);
+                } else {
+                    db.run(`UPDATE episodes SET targetId='${targetId}', moveType='${moveType}', risk=${risk}, action=${action}, numActions=${numActions} WHERE gameId = ${ gameId } AND configField = '${field}' AND unitId = '${unitId}'; '`);
+                }
+            });
         });
     },
 
@@ -91,9 +97,15 @@ module.exports = {
         });
     },
 
-    removeEpisodes(gameId, phase) {
+    removeEpisodesByPhase(gameId, phase) {
         db.serialize(() => {
             db.run(`DELETE FROM episodes WHERE gameID=${gameId} AND phase='${phase}';`);
+        });
+    },
+
+    removeEpisodesByUnitId(gameId, unitId) {
+        db.serialize(() => {
+            db.run(`DELETE FROM episodes WHERE gameID=${gameId} AND unitId='${unitId}';`);
         });
     },
 
