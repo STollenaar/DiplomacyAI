@@ -189,7 +189,7 @@ function loadConfig() {
     config = require('./config.json');
     url = config.Site;
 
-    let init = { url: url, agent: agent, cheerio: cheerio, config: config, database: database, fs: fs };
+    let init = { url, agent, cheerio, config, database, fs };
 
     state.init(init);
     game.init(init);

@@ -59,14 +59,14 @@ module.exports = {
         let games = [];
         return new Promise(resolve => {
             let links = 0;
-            let total = $('td[class="homeGamesStats"] div div[class*="bar homeGameLinks"] a').length;
+            let total = $('td[class="homeGamesStats"] div div[class*="bar homeGameLinks"] a').length + $('td[class="homeGamesStats"] div div[class*="bar homeGameLinks"] form[name="gameInvite"]').length;
             //going to loop over every game you are in
             $('td[class="homeGamesStats"] div div[class*="bar homeGameLinks"] a').each(function () {
                 let game = {};
                 //gets the main id needed from each game from the open link
                 game.bigId = $(this).attr('href').split('=')[1].split('#')[0];
                 //quick navigation to that game
-                agent.get(`${url}board.php?gameID=${game.bigId}#gamePanel`).then(function (r) {
+                agent.get(`${url}board.php?gameID=${game.bigId}`).then(function (r) {
                     const $2 = cheerio.load(r.text); //just loads that game page into cheerio
                     game.smallId = $2('#mapImage').attr('src').split('/')[2]; //get the small id from the image src
                     games.push(game);//adding to the list
@@ -76,6 +76,25 @@ module.exports = {
                     }
                 });
             });
+            //going over the invites.. 
+            // TODO: accept the invite
+            $('td[class="homeGamesStats"] div div[class*="bar homeGameLinks"] form[name="gameInvite"]').each( function(index, value) {
+                let objects = $(value).childeren('name=["gameInvitation"]').value();
+                let game = {};
+                game.bigId = parseInt(objects.gameID);
+
+                //quick navigation to that game
+                agent.get(`${url}board.php?gameID=${game.bigId}`).then(function (r) {
+                    const $2 = cheerio.load(r.text); //just loads that game page into cheerio
+                    game.smallId = $2('#mapImage').attr('src').split('/')[2]; //get the small id from the image src
+                    games.push(game);//adding to the list
+                    links++;
+                    if (links === total) {
+                        resolve(games);
+                    }
+                });
+            });
+
         });
     },
 

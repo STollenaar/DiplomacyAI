@@ -79,11 +79,11 @@ module.exports = {
 
     generateEpisode(gameId, phase, field, risk, action, numActions, unitId, moveType, targetId) {
         db.serialize(() => {
-            db.get(`SELECT * FROM episodes WHERE gameID=${gameId} AND configField='${field}' AND unitId='${unitId}'`, (err,row) => {
+            db.get(`SELECT * FROM episodes WHERE gameID=${gameId} AND configField='${field}' AND unitId='${unitId}'`, (err, row) => {
                 if (row === undefined) {
                     db.run(`INSERT INTO episodes ('gameID','phase', 'configField', 'risk', 'action', 'numActions', 'unitId', 'moveType', 'targetId') VALUES (${gameId}, '${phase}', '${field}', ${risk}, ${action}, ${numActions}, '${unitId}', '${moveType}', '${targetId}');`);
                 } else {
-                    db.run(`UPDATE episodes SET targetId='${targetId}', moveType='${moveType}', risk=${risk}, action=${action}, numActions=${numActions} WHERE gameId = ${ gameId } AND configField = '${field}' AND unitId = '${unitId}'; '`);
+                    db.run(`UPDATE episodes SET targetId='${targetId}', moveType='${moveType}', risk=${risk}, action=${action}, numActions=${numActions} WHERE gameId = ${gameId} AND configField = '${field}' AND unitId = '${unitId}'; '`);
                 }
             });
         });
@@ -92,20 +92,14 @@ module.exports = {
     getEpisodes(gameId) {
         return new Promise(resolve => {
             db.serialize(() => {
-                db.all(`SELECT * FROM episodes WHERE gameID=${gameId};`, (err, rows) => resolve(rows));
+                db.all(`SELECT * FROM episodes WHERE gameID=${gameId} ORDER BY targetId ASC, unitId ASC;`, (err, rows) => resolve(rows));
             });
         });
     },
 
-    removeEpisodesByPhase(gameId, phase) {
+    removeEpisodes(gameId, phase) {
         db.serialize(() => {
             db.run(`DELETE FROM episodes WHERE gameID=${gameId} AND phase='${phase}';`);
-        });
-    },
-
-    removeEpisodesByUnitId(gameId, unitId) {
-        db.serialize(() => {
-            db.run(`DELETE FROM episodes WHERE gameID=${gameId} AND unitId='${unitId}';`);
         });
     },
 

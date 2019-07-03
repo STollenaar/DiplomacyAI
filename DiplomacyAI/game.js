@@ -162,9 +162,8 @@ module.exports = {
                 //switching between the different phases
                 //switch (phase) {
                 //    case "Diplomacy":
-                //        if (await move.makeMove(html, gameId, page, debug)) {
-                //            await move.makeRandomMove(html, page);
-                //        }
+                //        await move.makeMove(html, gameId, page, debug);
+                //        
                 //        break;
                 //    case "Builds":
                 //        await builder.makeRandomMove(html, page);
@@ -185,20 +184,28 @@ module.exports = {
             //do the update
             for (let episode of episodes) {
                 let R = await module.exports.checkMoveSuccess(episode, page);
+                let type;
                 if (episode.moveType === "Supported") {
-                    R =await module.exports.checkMoveSuccess(episodes.find(e => e.unitId === episode.unitId && e.moveType !== episode.moveType), page);
+                    R = await module.exports.checkMoveSuccess(episodes.find(e => e.unitId === episode.unitId && e.moveType !== episode.moveType), page);
+                } else if (episode.configField === "neededFriendly") {
+                    const e = episodes.find(e => e.targetId === episode.targetId && e.configField === "supportMove");
+                    type = e.moveType === "Move" || e.moveType === "Support move" ? "attack" : "defense";
+                    R = await module.exports.checkMoveSuccess(e, page);
                 }
                 const to = (await database.getTerritoryByID(gameId, episode.targetId)).name;
-                let units = await util.getUnits(page);
-                const unit = units.find(u => u.id === episode.unitId);
+                const unit = (await util.getUnits(page)).find(u => u.id === episode.unitId);
                 let color = R ? "\x1b[32m" : "\x1b[31m";
-                console.log(color, `The ${unit.type} ${episode.moveType} to ${to}`);
+                if (episode.configField !== "neededFriendly" && episode.moveType !== "Supported") {
+                    console.log(color, `The ${unit.type} ${episode.moveType} to ${to}`);
+                } else if (episode.configField === "neededFriendly") {
+                    console.log(color, `The ${type} on ${to} has been carried out by ${episode.action} friendlies`);
+                }
                 R = R ? 1 : -1; //setting reward type, positive for success, negative for failure
                 module.exports.updateValues(episode, R);
                 module.exports.updatePolicy(episode);
             }
             console.log("\x1b[0m");
-            //await database.removeEpisodesByPhase(gameId, episodes[0].phase);
+            await database.removeEpisodes(gameId, episodes[0].phase);
             await database.updateConfig(fs, config);
         }
     },

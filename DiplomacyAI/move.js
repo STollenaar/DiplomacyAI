@@ -19,89 +19,6 @@ module.exports = {
         fs = init.fs;
     },
 
-    async makeRandomMove(site, page) {
-        const $ = cheerio.load(site);
-        await new Promise(resolve => {
-            let results = 0;
-            let total = $('table.orders tbody').children().length;
-            $('table.orders td[class="order"]').each(async () => {
-                let tr = $(this);
-                //removes the default selected option
-                const id = tr.children('div').attr('id');
-                let loop1 = true;
-                //random order
-                while (loop1) {
-                    const order = Math.floor(Math.random() * Math.floor(await page.$eval(`div#${id} span[class="orderSegment type"] select`, e => e.length)));
-
-                    if (order === 0 && tr.children('div').children('span[class="orderSegment type"]').children('select').children().eq(order).attr('value') === "Hold") {
-                        break;
-                    }
-                    await page.select(`div#${id} select[ordertype="type"]`, tr.children('div').children('span[class="orderSegment type"]').children('select').children().eq(order).attr('value'));
-
-                    if (await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.length) === 1 && ["", "Convoy"].includes(await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.children[0].innerHTML))) {
-                        continue;
-                    } else {
-                        loop1 = false;
-                        loop2 = true;
-                        while (loop2) {
-                            //setting the orders correctly
-                            switch (order) {
-
-                                case 0:
-                                case 1:
-                                case 2:
-                                    {
-                                        //get a valid to value
-                                        const to = Math.floor(Math.random() * Math.floor(await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.length)));
-                                        console.log(`order: ${order}, to: ${to}`);
-                                        if (await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, (e, to) => e.children[to].innerHTML, to) !== "") {
-                                            loop2 = false;
-                                            await page.select(`div#${id} span[class="orderSegment toTerrID"] select`, await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, (e, to) => e.children[to].value, to));
-                                        }
-                                        break;
-                                    }
-                                case 3:
-                                    {
-                                        //valid to value
-                                        const to = Math.floor(Math.random() * Math.floor(await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.length)));
-                                        console.log(`order S Move: ${order}, to: ${to}`);
-                                        if (await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, (e, to) => e.children[to].innerHTML, to) !== "") {
-                                            loop2 = false;
-                                            await page.select(`div#${id} span[class="orderSegment toTerrID"] select`, await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, (e, to) => e.children[to].value, to));
-
-                                            loop3 = true;
-                                            //trying to get a valid from value and checking if the to value was good enough
-                                            while (loop3) {
-                                                const from = Math.floor(Math.random() * Math.floor(await page.$eval(`div#${id} span[class="orderSegment fromTerrID"] select`, e => e.length)));
-                                                console.log(`order support move from: ${from}`);
-                                                if (await page.$eval(`div#${id} span[class="orderSegment fromTerrID"] select`, e => e.length) === 1 && await page.$eval(`div#${id} span[class="orderSegment fromTerrID"] select`, e => e.children[0].innerHTML) === "") {
-                                                    loop2 = true;
-                                                    loop3 = false;
-                                                    break;
-                                                } else if (await page.$eval(`div#${id} span[class="orderSegment fromTerrID"] select`, (e, from) => e.children[from].innerHTML, from) !== "") {
-                                                    await page.select(`div#${id} span[class="orderSegment fromTerrID"] select`, await page.$eval(`div#${id} span[class="orderSegment fromTerrID"] select`, (e, from) => e.children[from].value, from));
-                                                    break;
-                                                }
-
-                                            }
-                                        }
-                                        break;
-                                    }
-                            }
-                        }
-                    }
-                }
-                results++;
-                if (results === total) {
-                    resolve();
-                }
-            });
-        });
-
-        await page.$eval('input[name="Ready"]', b => b.click());
-        await page.close();
-    },
-
     async makeMove(site, gameId, page, debug) {
         const $ = cheerio.load(site);
         const countryID = $('span[class*="memberYourCountry"]').attr('class').split(' ')[0].substr(-1);
@@ -141,8 +58,8 @@ module.exports = {
         }
         //checking the best combination of moves
         supplies = util.extractLowestDistance(supplies);
-        console.log("RESULTS");
-        console.log(supplies);
+        //console.log("RESULTS");
+        //console.log(supplies);
         resolved = 0;
         supplies = supplies.filter(s => s.distance !== 0);
         if (supplies.length !== 0) {
@@ -162,7 +79,6 @@ module.exports = {
             await page.$eval('input[name="Ready"]', b => b.click());
             await page.close();
         }
-        return supplies.length === 0;
     },
 
     //added more logic to making a move, seeing if a move needs support for it
@@ -206,13 +122,6 @@ module.exports = {
     },
 
     //doing the support move
-    //add way to update the riskNumber
-    /*
-        actions [Hold, Move, Support move]
-        => Hold
-            => doing its original thing if that isn't going to the targeted territory
-        [P/Q][Risk][prop/value]
-    */
     supportMove(page, current, supplies, units, targetStatus, targetRisk, countryID, gameId, phase) {
         return new Promise(async (resolve) => {
 
@@ -230,6 +139,7 @@ module.exports = {
 
             //removing not needed and high risked friendlies;
             surrFriendly.length > neededFriendlies ? surrFriendly = surrFriendly.splice(0, neededFriendlies) : surrFriendly = surrFriendly;
+            database.generateEpisode(gameId, phase, "neededFriendly", targetRisk, neededFriendlies, config["neededFriendly"].P.length, 0, "Supporting", current.id);
 
             //quick init if not done
             surrFriendly.forEach(async e => {
