@@ -4,7 +4,6 @@ const puppeteer = require('puppeteer');
 let agent;
 let cheerio;
 let url;
-let site;
 
 module.exports = {
 
@@ -14,13 +13,9 @@ module.exports = {
         cheerio = init.cheerio;
     },
 
-    updateSite(s) {
-        site = s;
-    },
-
     stateParser(smallId, bigId, index) {
-        turl = `${url}/cache/games/${smallId}/${bigId}/${index}-json.map`;
-        agent.get(turl).then(function (response) {
+        turl = `${url}cache/games/${smallId}/${bigId}/${index}-json.map`;
+        agent.get(turl).then(response => {
             const $ = cheerio.load(response.text);
             let units = JSON.parse(response.text.split(' ')[4].split('(')[1].split(')')[0]);
             let terrs = JSON.parse(response.text.split(' ')[6].split(';')[0]);
@@ -53,20 +48,38 @@ module.exports = {
     },
 
 
-    gameFinder() {
+    async gameFinder() {
         //site is set to the profile page
-        let $ = cheerio.load(site);
+        let $;
+        await agent.get(`${url}index.php`).then(r => $ = cheerio.load(r.text));
         let games = [];
-        return new Promise(resolve => {
+        return new Promise(async resolve => {
+
+            //going over the invites and accepting them
+            if ($('td[class="homeGamesStats"] div div[class*="bar homeGameLinks"] form[name="gameInvite"]').length > 0) {
+                await new Promise(re => {
+                    $('td[class="homeGamesStats"] div div[class*="bar homeGameLinks"] form[name="gameInvite"]').each((index, value) => {
+                        let objects = $(value).children('input[name="gameInvitation"]').val();
+                        //accepting the invite
+                        agent.post(`${url}#`).type('form').send({ gameInvitation: objects, accept: true }).then(() => {
+                            agent.get(`${url}index.php`).then(r => {
+                                $ = cheerio.load(r.text);
+                                re();
+                            });
+                        });
+                    });
+                });
+            }
+
             let links = 0;
-            let total = $('td[class="homeGamesStats"] div div[class*="bar homeGameLinks"] a').length + $('td[class="homeGamesStats"] div div[class*="bar homeGameLinks"] form[name="gameInvite"]').length;
+            let total = $('td[class="homeGamesStats"] div div[class*="bar homeGameLinks"] a').length;
             //going to loop over every game you are in
-            $('td[class="homeGamesStats"] div div[class*="bar homeGameLinks"] a').each(function () {
+            $('td[class="homeGamesStats"] div div[class*="bar homeGameLinks"] a').each((index, value) => {
                 let game = {};
                 //gets the main id needed from each game from the open link
-                game.bigId = $(this).attr('href').split('=')[1].split('#')[0];
+                game.bigId = $(value).attr('href').split('=')[1].split('#')[0];
                 //quick navigation to that game
-                agent.get(`${url}board.php?gameID=${game.bigId}`).then(function (r) {
+                agent.get(`${url}board.php?gameID=${game.bigId}`).then((r) => {
                     const $2 = cheerio.load(r.text); //just loads that game page into cheerio
                     game.smallId = $2('#mapImage').attr('src').split('/')[2]; //get the small id from the image src
                     games.push(game);//adding to the list
@@ -76,25 +89,6 @@ module.exports = {
                     }
                 });
             });
-            //going over the invites.. 
-            // TODO: accept the invite
-            $('td[class="homeGamesStats"] div div[class*="bar homeGameLinks"] form[name="gameInvite"]').each( function(index, value) {
-                let objects = $(value).childeren('name=["gameInvitation"]').value();
-                let game = {};
-                game.bigId = parseInt(objects.gameID);
-
-                //quick navigation to that game
-                agent.get(`${url}board.php?gameID=${game.bigId}`).then(function (r) {
-                    const $2 = cheerio.load(r.text); //just loads that game page into cheerio
-                    game.smallId = $2('#mapImage').attr('src').split('/')[2]; //get the small id from the image src
-                    games.push(game);//adding to the list
-                    links++;
-                    if (links === total) {
-                        resolve(games);
-                    }
-                });
-            });
-
         });
     },
 

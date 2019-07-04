@@ -158,13 +158,12 @@ function login(username, password) {
         password = config.Password;
     }
 
-    agent.post(`${url}logon.php`).type('form').send({ loginuser: username }).send({ loginpass: password }).then(function (response) {
+    agent.post(`${url}logon.php`).type('form').send({ loginuser: username, loginpass: password }).then(function (response) {
         const $ = cheerio.load(response.text);
         userID = $('div #header-welcome a').attr('href').split('=')[1];
         //navigates to the user profile
         agent.get(`${url}index.php`).then(async function (r) {
             site = r.text;
-            state.updateSite(site);
             printUser();
             let games = await state.gameFinder();
             game.gameCheck(games);
@@ -192,6 +191,7 @@ function loadConfig() {
     let init = { url, agent, cheerio, config, database, fs };
 
     state.init(init);
+    init.state = state;
     game.init(init);
     login();
 }

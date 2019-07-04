@@ -6,12 +6,14 @@ const builder = require('./builder');
 const retreater = require('./retreater');
 const util = require('./util');
 
+
 let url;
 let agent;
 let database;
 let config;
 let game;
 let fs;
+let state;
 
 let runnable;
 
@@ -23,6 +25,7 @@ module.exports = {
         database = init.database;
         config = init.config;
         fs = init.fs;
+        state = init.state;
 
         move.init(init);
         builder.init(init);
@@ -40,93 +43,114 @@ module.exports = {
     },
 
     //adding game data to the db
-    async gameCheck(games) {
-        game = games;
-        this.browser = await puppeteer.launch({ headless: true });
-
-        let gam = (await database.getGames(config.Username)).map(e => e.gameID);
-        games.forEach(g => {
-            if (!gam.includes(parseInt(g.bigId))) {
-                console.log(`Found new game ${g.bigId} adding to database`);
-                database.addGame(config.Username, g.bigId);
-                this.gameAdding(g.bigId, this.browser);
+    gameCheck(games) {
+        return new Promise(async resolve => {
+            game = games;
+            if (this.browser === undefined) {
+                this.browser = await puppeteer.launch({ headless: true });
             }
+
+            let gam = (await database.getGames(config.Username)).map(e => e.gameID);
+            const total = games.length;
+            let links = 0;
+            games.forEach(async g => {
+                if (!gam.includes(parseInt(g.bigId))) {
+                    await this.gameAdding(g.bigId, this.browser);
+                }
+                links++;
+                if (links === total) {
+                    resolve();
+                }
+            });
         });
     },
 
     async gameAdding(Id, browser) {
-        const access = CookieAccess(
-            url.hostname,
-            url.pathname,
-            'https:' === url.protocol
-        );
-        const page = await browser.newPage();
+        return new Promise(async resolve => {
+            const access = CookieAccess(
+                url.hostname,
+                url.pathname,
+                'https:' === url.protocol
+            );
+            const page = await browser.newPage();
 
-        //cooking inserting
-        for (let cookies in agent.jar.getCookies(access)) {
-            cookies = agent.jar.getCookies(access)[cookies];
-            if (cookies !== undefined && cookies.value !== undefined) {
-                cookies.url = url;
-                await page.setCookie(cookies);
+            //cooking inserting
+            for (let cookies in agent.jar.getCookies(access)) {
+                cookies = agent.jar.getCookies(access)[cookies];
+                if (cookies !== undefined && cookies.value !== undefined) {
+                    cookies.url = url;
+                    await page.setCookie(cookies);
+                }
             }
-        }
 
-        await page.goto(`${url}/board.php?gameID=${Id}`, { "waitUntil": "load" }).then(async () => {
-            //creating the mess... aka making a serializable object
-            let mess = await page.evaluate(() => {
-                const ar = window.Territories._object;
-                let territories = [];
-                let borders = [];
-
-                for (let t in ar) {
-                    t = ar[t];
-                    let terr = {};
-                    terr.id = t.id;
-                    terr.name = t.name;
-                    terr.type = t.type;
-                    terr.supply = t.supply;
-
-                    for (let b in t.CoastalBorders) {
-                        b = t.CoastalBorders[b];
-                        let border = {};
-                        if (b.a === undefined || b.a === null) {
-                            continue;
-                        }
-
-                        border.ownID = t.id;
-                        border.borderID = b.id;
-                        border.armyPass = b.a;
-                        border.fleetPass = b.f;
-                        borders.push(border);
-                    }
-
-
-                    territories.push(terr);
+            await page.goto(`${url}board.php?gameID=${Id}`, { "waitUntil": "load" }).then(async () => {
+                const $ = cheerio.load(await page.content());
+                if ($('span[class="gamePhase"]').text() === "Pre-game") {
+                    console.log(`Not adding game ${Id} still in Pre-game`);
+                    return;
                 }
 
-                return {
-                    t: territories, b: borders
-                };
+                console.log(`Found new game ${Id} adding to database`);
+                database.addGame(config.Username, Id);
+                //creating the mess... aka making a serializable object
+                let mess = await page.evaluate(() => {
+                    const ar = window.Territories._object;
+                    let territories = [];
+                    let borders = [];
 
+                    for (let t in ar) {
+                        t = ar[t];
+                        let terr = {};
+                        terr.id = t.id;
+                        terr.name = t.name;
+                        terr.type = t.type;
+                        terr.supply = t.supply;
+
+                        for (let b in t.CoastalBorders) {
+                            b = t.CoastalBorders[b];
+                            let border = {};
+                            if (b.a === undefined || b.a === null) {
+                                continue;
+                            }
+
+                            border.ownID = t.id;
+                            border.borderID = b.id;
+                            border.armyPass = b.a;
+                            border.fleetPass = b.f;
+                            borders.push(border);
+                        }
+
+
+                        territories.push(terr);
+                    }
+
+                    return {
+                        t: territories, b: borders
+                    };
+
+                });
+                for (let t in mess.t) {
+                    t = mess.t[t];
+                    database.addTerritory(Id, t.id, t.name, t.type, t.supply);
+
+                }
+
+                for (let b in mess.b) {
+                    b = mess.b[b];
+                    database.addBorder(Id, b.ownID, b.borderID, b.armyPass, b.fleetPass);
+                }
+                console.log(`Done parsing data for new game ${Id}`);
             });
-            for (let t in mess.t) {
-                t = mess.t[t];
-                database.addTerritory(Id, t.id, t.name, t.type, t.supply);
-
-            }
-
-            for (let b in mess.b) {
-                b = mess.b[b];
-                database.addBorder(Id, b.ownID, b.borderID, b.armyPass, b.fleetPass);
-            }
-            console.log(`Done parsing data for new game ${Id}`);
+            await page.close();
+            resolve();
         });
-        await page.close();
     },
 
     async canMakeMoves(debug) {
         tries = 0;
         console.log(game);
+        let games = await state.gameFinder();
+        await this.gameCheck(games);
 
         for (gameID in game) {
             await this.checkMove(game[gameID].bigId, this.browser, debug);
