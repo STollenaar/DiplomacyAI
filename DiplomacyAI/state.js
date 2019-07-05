@@ -15,21 +15,8 @@ module.exports = {
         fs = init.fs;
     },
 
-    async gameCreate(variantID, name, password, invitedPlayers) {
-
-        if (invitedPlayers === undefined) {
-            invitedPlayers = "";
-        }
-        if (name === undefined) {
-            name = "BotCreate";
-        }
-        if (password === undefined) {
-            password = "HelloWorld";
-        }
-        if (variantID === undefined) {
-            variantID = 15;
-        }
-
+    async gameCreate(variantID = 15, name = "BotCreate", password="HelloWorld", invitedPlayers="") {
+        
         let newGame = {};
         newGame.variantID = variantID;
         newGame.name = name;
