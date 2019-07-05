@@ -54,27 +54,12 @@ input.addListener("data", async function (d) {
         case "config":
             configOperations(d);
             break;
-        case "state":
-            //turl = `${url}/cache/games/${smallId}/${bigId}`;
-            //let states = [];
-            //request.get(turl).then(function (response) {
-            //    const $ = cheerio.load(response.text);
-            //    $('a').each(function () {
-            //        if ($(this).text().includes('json')) {
-            //            states.push($(this).text());
-            //        }
-            //    });
-            //    console.log(states);
-            //});
-
-
-            state.stateParser(d[1], d[2], d[3]);
-            break;
-
         case "checkMove":
             game.canMakeMoves(d[1]);
             break;
-
+        case "createGame":
+            state.gameCreate(d[1], d[2], d[3], d[4]);
+            break;
         case "peek":
             state.peek(d[1]);
             break;

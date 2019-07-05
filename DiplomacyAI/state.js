@@ -4,6 +4,7 @@ const puppeteer = require('puppeteer');
 let agent;
 let cheerio;
 let url;
+let fs;
 
 module.exports = {
 
@@ -11,61 +12,65 @@ module.exports = {
         url = init.url;
         agent = init.agent;
         cheerio = init.cheerio;
+        fs = init.fs;
     },
 
-    stateParser(smallId, bigId, index) {
-        turl = `${url}cache/games/${smallId}/${bigId}/${index}-json.map`;
-        agent.get(turl).then(response => {
-            const $ = cheerio.load(response.text);
-            let units = JSON.parse(response.text.split(' ')[4].split('(')[1].split(')')[0]);
-            let terrs = JSON.parse(response.text.split(' ')[6].split(';')[0]);
+    async gameCreate(variantID, name, password, invitedPlayers) {
 
-            //making custom object map
-            let unitMap = new Map();
-            for (let u in units) {
-                let unit = {};
-                unit.countryID = units[u].countryID;
-                unit.type = units[u].type;
-                unit.terrID = units[u].terrID;
-                unitMap.set(u, unit);
-            }
+        if (invitedPlayers === undefined) {
+            invitedPlayers = "";
+        }
+        if (name === undefined) {
+            name = "BotCreate";
+        }
+        if (password === undefined) {
+            password = "HelloWorld";
+        }
+        if (variantID === undefined) {
+            variantID = 15;
+        }
 
-            let terrMap = new Map();
-            for (let t in terrs) {
-                t = terrs[t];
-                let terr = {};
-                terr.standoff = t.standoff;
-                terr.occupiedFromTerrID = t.occupiedFromTerrID;
-                terr.unitID = t.unitID;
-                terr.ownerCountryID = t.ownerCountryID;
-                terrMap.set(t.id, terr);
-            }
+        let newGame = {};
+        newGame.variantID = variantID;
+        newGame.name = name;
+        newGame.password = password;
+        newGame.passwordcheck = newGame.password;
+        newGame.invitedPlayers = invitedPlayers;
+        newGame.bet = 5;
+        newGame.potType = "Unranked";
+        newGame.phaseMinutes = 14400;
+        newGame.joinPeriod = 14400;
+        newGame.anon = "No";
+        newGame.pressType = "Regular";
+        newGame.missingPlayerPolicy = "Normal";
+        newGame.drawType = "draw-votes-public";
+        newGame.minimumReliabilityRating = 0;
+        newGame.excusedMissedTurns = 4;
 
-            info = { unitMap, terrMap };
-            console.log(unitMapS);
-
-        });
+        await agent.post(`${url}gamecreate.php`).type("form").send({ newGame: newGame });
     },
-
 
     async gameFinder() {
         //site is set to the profile page
-        let $;
-        await agent.get(`${url}index.php`).then(r => $ = cheerio.load(r.text));
+        let $ = cheerio.load((await agent.get(`${url}index.php`)).text);
         let games = [];
         return new Promise(async resolve => {
 
             //going over the invites and accepting them
             if ($('td[class="homeGamesStats"] div div[class*="bar homeGameLinks"] form[name="gameInvite"]').length > 0) {
                 await new Promise(re => {
+                    const total = $('td[class="homeGamesStats"] div div[class*="bar homeGameLinks"] form[name="gameInvite"]').length;
+                    let links = 0;
                     $('td[class="homeGamesStats"] div div[class*="bar homeGameLinks"] form[name="gameInvite"]').each((index, value) => {
                         let objects = $(value).children('input[name="gameInvitation"]').val();
                         //accepting the invite
-                        agent.post(`${url}#`).type('form').send({ gameInvitation: objects, accept: true }).then(() => {
-                            agent.get(`${url}index.php`).then(r => {
-                                $ = cheerio.load(r.text);
+                        agent.post(`${url}#`).type('form').send({ gameInvitation: objects, accept: true }).then(async () => {
+                            links++;
+                            if (links === total) {
+                                //resetting the index page
+                                $ = cheerio.load((await agent.get(`${url}index.php`)).text);
                                 re();
-                            });
+                            }
                         });
                     });
                 });
