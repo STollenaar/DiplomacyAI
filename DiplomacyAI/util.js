@@ -115,7 +115,7 @@ module.exports = {
     getSurrFriendly(targetUnit, surTerr, units, toId, countryID) {
         surTerr.forEach(terr => {
             //getting the risk number for supporting
-            terr.risk = units.filter(u => u.id !== targetUnit.id && u.moveChoices.includes(String(terr.fromId))
+            terr.risk = units.filter(u => u.id !== targetUnit.unitID && u.moveChoices.includes(String(terr.fromId))
                 && u.countryID !== countryID).length;
         });
         surTerr = surTerr.filter(t => units.find(u => u.terrID === String(t.fromId)).moveChoices.includes(toId));
@@ -128,7 +128,9 @@ module.exports = {
             resolve(await page.evaluate((id) => {
                 let fromT = window.Territories._object[id].coastParent;
                 let owner = window.TerrStatus.find(e => e.id === fromT.id);
-
+                if (owner !== undefined && owner.unitID === null) {
+                    owner = undefined;
+                }
                 return owner;
             }, id));
         });
@@ -141,10 +143,10 @@ module.exports = {
                 //constructing serializable object
                 for (u in window.Units._object) {
                     u = window.Units._object[u];
-                    console.log(u);
                     let unit;
                     try {
-                        unit = { id: u.id,type:u.type, terrID: u.terrID, countryID: u.countryID, moveChoices: u.getMoveChoices() };
+                        //getMovechoices() can include convoy movements...
+                        unit = { id: u.id, type: u.type, terrID: u.terrID, countryID: u.countryID, moveChoices: u.getMovableTerritories().map(c => c.id) };
                     } catch (e){
                         unit = { id: u.id, type: u.type, terrID: u.terrID, countryID: u.countryID, moveChoices: u.getMovableTerritories().map(c =>c.id) };
                     }

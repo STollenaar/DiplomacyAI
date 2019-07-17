@@ -16,6 +16,7 @@ let fs;
 let state;
 
 let runnable;
+let training;
 
 module.exports = {
 
@@ -32,9 +33,35 @@ module.exports = {
         retreater.init(init);
     },
 
+    startTraining(amountTimes, interval, opponents) {
+        training = { current: 0, maxAmount: amountTimes, interval: interval, opponents: opponents };
+        this.checkTraining();
+    },
+
+    statusTraining() {
+        console.log(training);
+    },
+
+    stopTraining() {
+        training = undefined;
+    },
+
+    checkTraining() {
+        if (training !== undefined) {
+            training.current++;
+            if (training.current !== training.maxAmount) {
+                state.gameCreate(15, "BotTraining", "HelloWorld", training.opponents.join(', '));
+                this.startAutoCheck(training.interval);
+            } else {
+                this.stopTraining();
+                this.stopAutoCheck();
+            }
+        }
+    },
+
     //starting the autocheck
-    startAutoCheck(secondsDelay) {
-        runnable = setInterval(() => { module.exports.canMakeMoves(true); }, secondsDelay * 1000);
+    startAutoCheck(secondsDelay, debug = false) {
+        runnable = setInterval(() => { module.exports.canMakeMoves(debug); }, secondsDelay * 1000);
     },
 
     //stopping the autocheck
@@ -47,7 +74,7 @@ module.exports = {
         return new Promise(async resolve => {
             game = games;
             if (this.browser === undefined) {
-                this.browser = await puppeteer.launch({ headless: true });
+                this.browser = await puppeteer.launch({ headless: false });
             }
 
             let gam = (await database.getGames(config.Username)).map(e => e.gameID);
@@ -181,29 +208,32 @@ module.exports = {
             if ($('div.memberUserDetail').text().includes('No orders submitted!') || $('div.memberUserDetail').text().includes('but not ready for next turn')) {
                 console.log(`Making a move for game: ${gameId}`);
                 const phase = $('span[class="gamePhase"]').text();
+                const countryID = parseInt($('span[class*="memberYourCountry"]').attr('class').split(' ')[0].substr(-1));
 
-                await module.exports.updateLearning(gameId, phase, page);
+                await module.exports.updateLearning(gameId, phase, countryID, page);
                 //switching between the different phases
-                //switch (phase) {
-                //    case "Diplomacy":
-                //        await move.makeMove(html, gameId, page, debug);
-                //        
-                //        break;
-                //    case "Builds":
-                //        await builder.makeRandomMove(html, page);
-                //        break;
-                //    case "Retreats":
-                //        await retreater.makeMove(html, gameId, page);
-                //        break;
-                //}
+                switch (phase) {
+                    case "Diplomacy":
+                        await move.makeMove(html, gameId, page, debug);
+
+                        break;
+                    case "Builds":
+                        await builder.makeMove(html, page);
+                        break;
+                    case "Retreats":
+                        await retreater.makeMove(html, gameId, page);
+                        break;
+                }
 
                 console.log(`Done making a move for game: ${gameId}`);
+            } else if ($('span[class="gamePhase"]').text() === "Finished") {
+                this.checkTraining();
             }
         });
     },
 
-    async updateLearning(gameId, phase, page) {
-        let episodes = await database.getEpisodes(gameId);
+    async updateLearning(gameId, phase, countryID, page) {
+        let episodes = await database.getEpisodes(gameId, countryID);
         if (episodes !== undefined && episodes.length !== 0 && episodes[0].phase !== phase) {
             //do the update
             for (let episode of episodes) {
@@ -229,7 +259,7 @@ module.exports = {
                 module.exports.updatePolicy(episode);
             }
             console.log("\x1b[0m");
-            await database.removeEpisodes(gameId, episodes[0].phase);
+            await database.removeEpisodes(gameId, countryID, episodes[0].phase);
             await database.updateConfig(fs, config);
         }
     },

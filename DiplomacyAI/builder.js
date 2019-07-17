@@ -1,70 +1,59 @@
-﻿const pathfinding = require('./pathFinding');
-const _ = require('lodash');
+﻿const _ = require('lodash');
+const orderType = ["Build Army", "Build Fleet"];
 
-let agent;
 let cheerio;
-let database;
 
 
 
 module.exports = {
     init(init) {
-        agent = init.agent;
         cheerio = init.cheerio;
-        database = init.database;
     },
 
-
-    async makeRandomMove(site, page) {
+    async makeMove(site, page) {
         const $ = cheerio.load(site);
-        await new Promise(resolve => {
+        await new Promise(async resolve => {
             let results = 0;
             let total = $('table.orders tbody').children().length;
-            $('table.orders td[class="order"]').each(async function () {
-                let tr = $(this);
+
+            let territories = $('select[ordertype="toTerrID"] option').map((i, el) => $(el).attr('value')).get();
+            territories = territories.filter((item, pos, ar) => ar.indexOf(item) === pos && item !== '');
+
+            for (const el of Array.from($('table.orders td[class="order"]'))) {
+                let tr = $(el);
                 //removes the default selected option
                 const id = tr.children('div').attr('id');
-                let loop1 = true;
-                //random order
-                while (loop1) {
-                    const order = Math.floor(Math.random() * Math.floor(await page.$eval(`div#${id} span[class="orderSegment type"] select`, e => e.length)));
-
-                    if (tr.children('div').children('span[class="orderSegment type"]').children('select').children().eq(order).attr('value') === "Wait") {
-                        break;
-                    }
-                    await page.select(`div#${id} select[ordertype="type"]`, tr.children('div').children('span[class="orderSegment type"]').children('select').children().eq(order).attr('value'));
-
-                    if (await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.length) === 1 && ["", "Convoy"].includes(await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.children[0].innerHTML))) {
-                        continue;
-                    } else {
-                        loop1 = false;
-                        loop2 = true;
-                        while (loop2) {
-                            //setting the orders correctly
-                            switch (order) {
-
-                                case 0:
-                                case 1:
-                                    //get a valid to value
-                                    const to = Math.floor(Math.random() * Math.floor(await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => e.length)));
-                                    if (await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, (e, to) => e.children[to].innerHTML, to) !== "") {
-                                        loop2 = false;
-                                        await page.select(`div#${id} span[class="orderSegment toTerrID"] select`, await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, (e, to) => e.children[to].value, to));
-                                    }
-                                    break;
-                            }
-                        }
-                    }
+                if (territories.length === 0) {
+                    await page.select(`div#${id} select[ordertype="type"]`, 'Wait');
+                } else {
+                    territories = await module.exports.build(id, territories, page);
                 }
-
                 results++;
                 if (results === total) {
                     resolve();
                 }
-            });
+            }
         });
         await page.$eval('input[name="Ready"]', b => b.click());
-        await page.close();
-    }
+        //await page.close();
+    },
 
+    async build(id, territories, page) {
+        return new Promise(async resolve => {
+            let t = true;
+            while (t) {
+                const order = Math.floor(Math.random() * orderType.length);
+                await page.select(`div#${id} select[ordertype="type"]`, orderType[order]);
+                const options = await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => Array.from(e).map(x => x.getAttribute('value')).filter(x => x !== ''));
+                if (territories.some(t => options.includes(t))) {
+                    const avOptions = _.intersection(territories, options);
+                    const to = Math.floor(Math.random() * avOptions.length);
+                    await page.select(`div#${id} select[ordertype="toTerrID"]`, avOptions[to]);
+                    territories = territories.filter(x => x !== avOptions[to]);
+                    resolve(territories);
+                    t = false;
+                }
+            }
+        });
+    }
 };

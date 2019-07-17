@@ -14,6 +14,8 @@ module.exports = {
         database = init.database;
     },
 
+    //TODO: removing the attacked from terrID from the unit choices
+
     async makeMove(site, gameId, page) {
         const $ = cheerio.load(site);
         const countryID = $('span[class*="memberYourCountry"]').attr('class').split(' ')[0].substr(-1);
@@ -24,14 +26,16 @@ module.exports = {
         await new Promise(resolve => {
             $('table.orders td[class="order"]').each(async function (index) {
                 let tr = $(this);
+                let id = tr.children('div').attr('id');
                 const spanWords = tr.children('div').children('span[class="orderSegment orderBegin"]').text();
                 const terr = spanWords.slice(spanWords.split('at')[0].length + 3).trim();
                 const terrID = (await database.getTerritoryByName(gameId, terr)).ID;
+                const options = await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => Array.from(e).map(x => x.getAttribute('value')).filter(x => x !== ''));
                 let finder = new PathFinding(database, agent, gameId, terrID, -countryID, spanWords.split(' ')[1].trim());
                 await finder.init(true, page);
                 //doing the actual finding
                 await finder.findClosestEmpty(terrID, index).then((object) => {
-                    supplies[index] = object.filter(e => e.distance === 1);
+                    supplies[index] = object.filter(e => e.distance === 1 && options.includes(String(e.id)));
                     resolved++;
                     if (resolved === orderLength) {
                         resolve();
@@ -48,14 +52,15 @@ module.exports = {
         if (supplies.length !== 0) {
 
             await new Promise(resolve => {
-                $('table.orders td[class="order"]').each(async function (index) {
-                    let tr = $(this);
+                $('table.orders td[class="order"]').each(async (index, value) => {
+                    let tr = $(value);
                     //removes the default selected option
                     let id = tr.children('div').attr('id');
                     //making the move to empty location
+                    console.log(index, supplies.find(e => e.index === index));
                     if (supplies.find(e => e.index === index) !== undefined &&
                         supplies.find(e => e.index === index).distance !== 0) {
-                        await page.select(`div#${id} select[ordertype="type"]`, 'Move');
+                        await page.select(`div#${id} select[ordertype="type"]`, 'Retreat');
                         await page.select(`div#${id} span[class="orderSegment toTerrID"] select`, String(supplies.find(e => e.index === index).id));
                     }
                     resolved++;

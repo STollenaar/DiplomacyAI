@@ -42,7 +42,7 @@
                     }
                     supplies.push({ id: current.ID, name: (await this.database.getTerritoryByID(this.gameID, current.ID)).name, distance:h, index:index});
                 } else {
-                    let rows = await this.database.getBorders(this.gameID, thing.ID, this.unitType);
+                    let rows = await this.database.getBordersRestricted(this.gameID, thing.ID, this.unitType);
                     for (let r in rows) {
                         r = rows[r];
                         //check if next id is good
@@ -86,7 +86,7 @@
                     }
                     supplies.push({ id: current.ID, name: (await this.database.getTerritoryByID(this.gameID, current.ID)).name, distance: h, index: index });
                 } else {
-                    let rows = await this.database.getBorders(this.gameID, thing.ID, this.unitType);
+                    let rows = await this.database.getBordersRestricted(this.gameID, thing.ID, this.unitType);
                     for (let r in rows) {
                         r = rows[r];
                         //check if next id is good

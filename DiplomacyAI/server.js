@@ -42,7 +42,6 @@ input.addListener("data", async function (d) {
                 //logout
                 agent.get(`${url}logon.php?logoff=on`).then(function (response) {
                     site = response.text;
-                    state.updateSite(site);
                     printUser();
                 });
             }
@@ -86,8 +85,32 @@ input.addListener("data", async function (d) {
             } else {
                 console.log("Unkown argument.");
             }
+            break;
+        case "train":
+            if (d[1] === undefined) {
+                console.log("Undefined argument please define as start/stop/status");
+            } else {
+                if (d[1] === "start") {
+                    if (d[2] === undefined) {
+                        console.log("Unknown amount of maximum times the bot will train");
+                    } else if (d[3] === undefined) {
+                        console.log("Time is undefined.. please define as seconds to wait.");
+                    } else if (d[4] === undefined) {
+                        console.log("Unknown opponents to train against, variable live play not supported!!");
+                    } else {
+                        game.startTraining(d[2], d[3], d.slice(4));
+                    }
+                } else if (d[1] === "stop") {
+                    console.log("Training will stop after the current game is finished.");
+                    game.stopTraining();
+                } else if (d[1] === "status") {
+                    game.statusTraining();
+                } else {
+                    console.log("Unknown argument");
+                }
+            }
+            break;
     }
-
 });
 
 //simple config operations so you don't have to reload everytime...
