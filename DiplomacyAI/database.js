@@ -25,6 +25,15 @@ module.exports = {
         });
     },
 
+    removeGame(gameID) {
+        db.serialize(() => {
+            db.run(`DELETE FROM episodes WHERE gameID=${gameID};`);
+            db.run(`DELETE FROM games WHERE gameID=${gameID};`);
+            db.run(`DELETE FROM borders WHERE gameID=${gameID};`);
+            db.run(`DELETE FROM territories WHERE gameID=${gameID};`);
+        });
+    },
+
     addTerritory(gameID, id, name, type, supply) {
         db.serialize(() => {
             db.run(`INSERT INTO territories ('gameID','ID', 'name', 'type', 'supply') VALUES (${gameID}, ${id}, '${name}', '${type}', '${supply}');`);
@@ -77,29 +86,29 @@ module.exports = {
         });
     },
 
-    generateEpisode(gameId, phase, field, risk, action, numActions, unitId, moveType, targetId, countryID) {
+    generateEpisode(gameID, phase, field, risk, action, numActions, unitID, moveType, targetID, countryID) {
         db.serialize(() => {
-            db.get(`SELECT * FROM episodes WHERE gameID=${gameId} AND countryID=${countryID} AND configField = '${field}' AND unitID = '${unitId}';`, (err, row) => {
+            db.get(`SELECT * FROM episodes WHERE gameID=${gameID} AND countryID=${countryID} AND configField = '${field}' AND unitID = '${unitID}';`, (err, row) => {
                 if (row === undefined) {
-                    db.run(`INSERT INTO episodes ('gameID', 'countryID', 'phase', 'configField', 'risk', 'action', 'numActions', 'unitID', 'moveType', 'targetID') VALUES (${gameId}, ${countryID}, '${phase}', '${field}', ${risk}, ${action}, ${numActions}, '${unitId}', '${moveType}', '${targetId}');`);
+                    db.run(`INSERT INTO episodes ('gameID', 'countryID', 'phase', 'configField', 'risk', 'action', 'numActions', 'unitID', 'moveType', 'targetID') VALUES (${gameID}, ${countryID}, '${phase}', '${field}', ${risk}, ${action}, ${numActions}, '${unitID}', '${moveType}', '${targetID}');`);
                 } else {
-                    db.run(`UPDATE episodes SET targetID='${targetId}', moveType='${moveType}', risk=${risk}, action=${action}, numActions=${numActions} WHERE gameID = ${gameId} AND countryID =${countryID}  AND configField = '${field}' AND unitID = '${unitId}'; '`);
+                    db.run(`UPDATE episodes SET targetID='${targetID}', moveType='${moveType}', risk=${risk}, action=${action}, numActions=${numActions} WHERE gameID = ${gameID} AND countryID =${countryID}  AND configField = '${field}' AND unitID = '${unitID}'; '`);
                 }
             });
         });
     },
 
-    getEpisodes(gameId, countryID) {
+    getEpisodes(gameID, countryID) {
         return new Promise(resolve => {
             db.serialize(() => {
-                db.all(`SELECT * FROM episodes WHERE gameID=${gameId} AND countryID=${countryID} ORDER BY targetId ASC, unitId ASC;`, (err, rows) => resolve(rows));
+                db.all(`SELECT * FROM episodes WHERE gameID=${gameID} AND countryID=${countryID} ORDER BY targetID ASC, unitID ASC;`, (err, rows) => resolve(rows));
             });
         });
     },
 
-    removeEpisodes(gameId, countryID, phase) {
+    removeEpisodes(gameID, countryID) {
         db.serialize(() => {
-            db.run(`DELETE FROM episodes WHERE gameID=${gameId} AND countryID=${countryID} AND phase = '${phase}';`);
+            db.run(`DELETE FROM episodes WHERE gameID=${gameID} AND countryID=${countryID};`);
         });
     },
 

@@ -20,7 +20,7 @@ module.exports = {
         const $ = cheerio.load(site);
         const countryID = $('span[class*="memberYourCountry"]').attr('class').split(' ')[0].substr(-1);
         const orderLength = $('table.orders tbody').children().length;
-        let supplies = [];
+
         let resolved = 0;
         //getting the closest empty territories
         await new Promise(resolve => {
@@ -33,48 +33,35 @@ module.exports = {
                 const options = await page.$eval(`div#${id} span[class="orderSegment toTerrID"] select`, e => Array.from(e).map(x => x.getAttribute('value')).filter(x => x !== ''));
                 let finder = new PathFinding(database, agent, gameId, terrID, -countryID, spanWords.split(' ')[1].trim());
                 await finder.init(true, page);
+                let supplies;
                 //doing the actual finding
                 await finder.findClosestEmpty(terrID, index).then((object) => {
-                    supplies[index] = object.filter(e => e.distance === 1 && options.includes(String(e.id)));
-                    resolved++;
-                    if (resolved === orderLength) {
-                        resolve();
-                    }
+                    supplies = object.filter(e => e.distance === 1 && options.includes(String(e.ID)));
                 });
+
+                supplies = supplies.sort((a, b) => { return a.distance - b.distance; });
+
+                supplies = util.extractLowestDistance([supplies]);
+                // console.log("RESULTS");
+                // console.log(supplies);
+                if (supplies.length !== 0) {
+
+                    await page.select(`div#${id} select[ordertype="type"]`, 'Retreat');
+                    // TODO introduce retreat learning
+                    await page.select(`div#${id} span[class="orderSegment toTerrID"] select`, String(supplies[0].ID));
+                } else {
+                    //disbanding, no possible move
+                    await page.select(`div#${id} select[ordertype="type"]`, 'Disband');
+                }
+
+                resolved++;
+                if (resolved === orderLength) {
+                    resolve();
+                }
             });
         });
-        supplies = supplies.sort((a, b) => { return a.distance - b.distance; });
-
-        supplies = util.extractLowestDistance(supplies);
-        console.log("RESULTS");
-        console.log(supplies);
-        resolved = 0;
-        if (supplies.length !== 0) {
-
-            await new Promise(resolve => {
-                $('table.orders td[class="order"]').each(async (index, value) => {
-                    let tr = $(value);
-                    //removes the default selected option
-                    let id = tr.children('div').attr('id');
-                    //making the move to empty location
-                    console.log(index, supplies.find(e => e.index === index));
-                    if (supplies.find(e => e.index === index) !== undefined &&
-                        supplies.find(e => e.index === index).distance !== 0) {
-                        await page.select(`div#${id} select[ordertype="type"]`, 'Retreat');
-                        await page.select(`div#${id} span[class="orderSegment toTerrID"] select`, String(supplies.find(e => e.index === index).id));
-                    }
-                    resolved++;
-                    if (resolved === orderLength) {
-                        resolve();
-                    }
-                });
-            });
-        } else {
-            //disbanding, no possible move
-            await page.select(`div#${id} select[ordertype="type"]`, 'Disband');
-        }
-        await page.$eval('input[name="Ready"]', b => b.click());
-        await page.close();
+        await page.click('input[name="Ready"]');
+        //await page.close();
         return true;
     }
 };

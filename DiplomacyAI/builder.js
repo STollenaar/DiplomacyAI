@@ -34,8 +34,10 @@ module.exports = {
                 }
             }
         });
-        await page.$eval('input[name="Ready"]', b => b.click());
+
+        await page.click('input[name="Ready"]');
         //await page.close();
+        return true;
     },
 
     async build(id, territories, page) {

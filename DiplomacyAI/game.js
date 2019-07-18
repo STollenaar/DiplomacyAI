@@ -20,7 +20,7 @@ let training;
 
 module.exports = {
 
-    init(init) {
+    async init(init) {
         url = init.url;
         agent = init.agent;
         database = init.database;
@@ -31,6 +31,10 @@ module.exports = {
         move.init(init);
         builder.init(init);
         retreater.init(init);
+
+        if (this.browser === undefined) {
+            this.browser = await puppeteer.launch({ headless: true });
+        }
     },
 
     startTraining(amountTimes, interval, opponents) {
@@ -46,7 +50,8 @@ module.exports = {
         training = undefined;
     },
 
-    checkTraining() {
+    checkTraining(gameID) {
+        database.removeEpisodes(gameID);
         if (training !== undefined) {
             training.current++;
             if (training.current !== training.maxAmount) {
@@ -61,7 +66,7 @@ module.exports = {
 
     //starting the autocheck
     startAutoCheck(secondsDelay, debug = false) {
-        runnable = setInterval(() => { module.exports.canMakeMoves(debug); }, secondsDelay * 1000);
+        runnable = setInterval(async () => { await module.exports.canMakeMoves(debug); }, secondsDelay * 1000);
     },
 
     //stopping the autocheck
@@ -69,115 +74,12 @@ module.exports = {
         clearInterval(runnable);
     },
 
-    //adding game data to the db
-    gameCheck(games) {
-        return new Promise(async resolve => {
-            game = games;
-            if (this.browser === undefined) {
-                this.browser = await puppeteer.launch({ headless: false });
-            }
 
-            let gam = (await database.getGames(config.Username)).map(e => e.gameID);
-            const total = games.length;
-            let links = 0;
-            games.forEach(async g => {
-                if (!gam.includes(parseInt(g.bigId))) {
-                    await this.gameAdding(g.bigId, this.browser);
-                }
-                links++;
-                if (links === total) {
-                    resolve();
-                }
-            });
-        });
-    },
-
-    async gameAdding(Id, browser) {
-        return new Promise(async resolve => {
-            const access = CookieAccess(
-                url.hostname,
-                url.pathname,
-                'https:' === url.protocol
-            );
-            const page = await browser.newPage();
-
-            //cooking inserting
-            for (let cookies in agent.jar.getCookies(access)) {
-                cookies = agent.jar.getCookies(access)[cookies];
-                if (cookies !== undefined && cookies.value !== undefined) {
-                    cookies.url = url;
-                    await page.setCookie(cookies);
-                }
-            }
-
-            await page.goto(`${url}board.php?gameID=${Id}`, { "waitUntil": "load" }).then(async () => {
-                const $ = cheerio.load(await page.content());
-                if ($('span[class="gamePhase"]').text() === "Pre-game") {
-                    console.log(`Not adding game ${Id} still in Pre-game`);
-                    return;
-                }
-
-                console.log(`Found new game ${Id} adding to database`);
-                database.addGame(config.Username, Id);
-                //creating the mess... aka making a serializable object
-                let mess = await page.evaluate(() => {
-                    const ar = window.Territories._object;
-                    let territories = [];
-                    let borders = [];
-
-                    for (let t in ar) {
-                        t = ar[t];
-                        let terr = {};
-                        terr.id = t.id;
-                        terr.name = t.name;
-                        terr.type = t.type;
-                        terr.supply = t.supply;
-
-                        for (let b in t.CoastalBorders) {
-                            b = t.CoastalBorders[b];
-                            let border = {};
-                            if (b.a === undefined || b.a === null) {
-                                continue;
-                            }
-
-                            border.ownID = t.id;
-                            border.borderID = b.id;
-                            border.armyPass = b.a;
-                            border.fleetPass = b.f;
-                            borders.push(border);
-                        }
-
-
-                        territories.push(terr);
-                    }
-
-                    return {
-                        t: territories, b: borders
-                    };
-
-                });
-                for (let t in mess.t) {
-                    t = mess.t[t];
-                    database.addTerritory(Id, t.id, t.name, t.type, t.supply);
-
-                }
-
-                for (let b in mess.b) {
-                    b = mess.b[b];
-                    database.addBorder(Id, b.ownID, b.borderID, b.armyPass, b.fleetPass);
-                }
-                console.log(`Done parsing data for new game ${Id}`);
-            });
-            await page.close();
-            resolve();
-        });
-    },
 
     async canMakeMoves(debug) {
+
         tries = 0;
-        console.log(game);
-        let games = await state.gameFinder();
-        await this.gameCheck(games);
+        game = await state.gameCheck(this.browser);
 
         for (gameID in game) {
             await this.checkMove(game[gameID].bigId, this.browser, debug);
@@ -215,7 +117,6 @@ module.exports = {
                 switch (phase) {
                     case "Diplomacy":
                         await move.makeMove(html, gameId, page, debug);
-
                         break;
                     case "Builds":
                         await builder.makeMove(html, page);
@@ -227,7 +128,7 @@ module.exports = {
 
                 console.log(`Done making a move for game: ${gameId}`);
             } else if ($('span[class="gamePhase"]').text() === "Finished") {
-                this.checkTraining();
+                this.checkTraining(gameId);
             }
         });
     },
@@ -240,14 +141,16 @@ module.exports = {
                 let R = await module.exports.checkMoveSuccess(episode, page);
                 let type;
                 if (episode.moveType === "Supported") {
-                    R = await module.exports.checkMoveSuccess(episodes.find(e => e.unitId === episode.unitId && e.moveType !== episode.moveType), page);
+                    R = await module.exports.checkMoveSuccess(episodes.find(e => e.unitID === episode.unitID && e.moveType !== episode.moveType), page);
+                } else if (episode.moveType === "Ignore") {
+                    R = await module.exports.checkMoveSuccess(episode, page);
                 } else if (episode.configField === "neededFriendly") {
-                    const e = episodes.find(e => e.targetId === episode.targetId && e.configField === "supportMove");
+                    const e = episodes.find(e => e.targetID === episode.targetID && e.configField === "supportMove");
                     type = e.moveType === "Move" || e.moveType === "Support move" ? "attack" : "defense";
                     R = await module.exports.checkMoveSuccess(e, page);
                 }
-                const to = (await database.getTerritoryByID(gameId, episode.targetId)).name;
-                const unit = (await util.getUnits(page)).find(u => u.id === episode.unitId);
+                const to = (await database.getTerritoryByID(gameId, episode.targetID)).name;
+                const unit = (await util.getUnits(page)).find(u => u.ID === episode.unitID);
                 let color = R ? "\x1b[32m" : "\x1b[31m";
                 if (episode.configField !== "neededFriendly" && episode.moveType !== "Supported") {
                     console.log(color, `The ${unit.type} ${episode.moveType} to ${to}`);
@@ -257,9 +160,10 @@ module.exports = {
                 R = R ? 1 : -1; //setting reward type, positive for success, negative for failure
                 module.exports.updateValues(episode, R);
                 module.exports.updatePolicy(episode);
+                console.log("\x1b[0m");
             }
             console.log("\x1b[0m");
-            await database.removeEpisodes(gameId, countryID, episodes[0].phase);
+            await database.removeEpisodes(gameId, countryID);
             await database.updateConfig(fs, config);
         }
     },
@@ -286,15 +190,19 @@ module.exports = {
 
     async checkMoveSuccess(episode, page) {
         const units = await util.getUnits(page);
+        //console.log(episode, units.find(u => u.ID === episode.unitID));
         switch (episode.moveType) {
             case "Hold":
+            case "Ignore":
             case "Move":
-                return units.find(u => u.id === episode.unitId).terrID === episode.targetId;
+                return units.find(u => u.ID === episode.unitID).terrID === episode.targetID;
             case "Support move":
             case "Support hold":
-                let unit = units.find(u => u.id === episode.unitId);
-                let terrUnit = units.find(u => u.terrID === episode.targetId);
-                return unit.countryID === terrUnit.countryID;
+                let unit = units.find(u => u.ID === episode.unitID);
+                let terrUnit = units.find(u => u.terrID === episode.targetID);
+
+                //find better solution
+                return terrUnit !== undefined && unit.countryID === terrUnit.countryID;
         }
     }
 };

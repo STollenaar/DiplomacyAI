@@ -40,7 +40,7 @@
                     while (current.parent !== undefined && current.parent !== -1 && current.parent.ID !== this.startID) {
                         current = current.parent;
                     }
-                    supplies.push({ id: current.ID, name: (await this.database.getTerritoryByID(this.gameID, current.ID)).name, distance:h, index:index});
+                    supplies.push({ ID: current.ID, name: (await this.database.getTerritoryByID(this.gameID, current.ID)).name, distance:h, index:index});
                 } else {
                     let rows = await this.database.getBordersRestricted(this.gameID, thing.ID, this.unitType);
                     for (let r in rows) {
@@ -84,7 +84,7 @@
                     while (current.parent !== undefined && current.parent !== -1 && current.parent.ID !== this.startID) {
                         current = current.parent;
                     }
-                    supplies.push({ id: current.ID, name: (await this.database.getTerritoryByID(this.gameID, current.ID)).name, distance: h, index: index });
+                    supplies.push({ ID: current.ID, name: (await this.database.getTerritoryByID(this.gameID, current.ID)).name, distance: h, index: index });
                 } else {
                     let rows = await this.database.getBordersRestricted(this.gameID, thing.ID, this.unitType);
                     for (let r in rows) {

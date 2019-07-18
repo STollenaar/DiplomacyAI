@@ -25,8 +25,8 @@ module.exports = {
                 let xorFil = xor.filter(a => a.index === e.index);
                 while (e.value > 1) {
                     let objectToRemove = xorFil[Math.floor(Math.random() * xorFil.length)];
-                    xor = xor.filter(a => a.id !== objectToRemove.id);
-                    xorFil = xor.filter(a => a.id !== objectToRemove.id);
+                    xor = xor.filter(a => a.ID !== objectToRemove.ID);
+                    xorFil = xor.filter(a => a.ID !== objectToRemove.ID);
                     e.value--;
                 }
             });
@@ -60,8 +60,8 @@ module.exports = {
                         let xorFil = xorDup.filter(a => a.index === e.index);
                         while (e.value > 1) {
                             let objectToRemove = xorFil[Math.floor(Math.random() * xorFil.length)];
-                            xorDup = xorDup.filter(a => a.id !== objectToRemove.id);
-                            xorFil = xorDup.filter(a => a.id !== objectToRemove.id);
+                            xorDup = xorDup.filter(a => a.ID !== objectToRemove.ID);
+                            xorFil = xorDup.filter(a => a.ID !== objectToRemove.ID);
                             e.value--;
                         }
                     });
@@ -115,7 +115,7 @@ module.exports = {
     getSurrFriendly(targetUnit, surTerr, units, toId, countryID) {
         surTerr.forEach(terr => {
             //getting the risk number for supporting
-            terr.risk = units.filter(u => u.id !== targetUnit.unitID && u.moveChoices.includes(String(terr.fromId))
+            terr.risk = units.filter(u => u.ID !== targetUnit.unitID && u.moveChoices.includes(String(terr.fromId))
                 && u.countryID !== countryID).length;
         });
         surTerr = surTerr.filter(t => units.find(u => u.terrID === String(t.fromId)).moveChoices.includes(toId));
@@ -123,16 +123,16 @@ module.exports = {
         return surTerr;
     },
 
-    getTargetStatus(page, id) {
+    getTargetStatus(page, ID) {
         return new Promise(async (resolve) => {
-            resolve(await page.evaluate((id) => {
-                let fromT = window.Territories._object[id].coastParent;
+            resolve(await page.evaluate((ID) => {
+                let fromT = window.Territories._object[ID].coastParent;
                 let owner = window.TerrStatus.find(e => e.id === fromT.id);
                 if (owner !== undefined && owner.unitID === null) {
                     owner = undefined;
                 }
                 return owner;
-            }, id));
+            }, ID));
         });
     },
 
@@ -146,9 +146,9 @@ module.exports = {
                     let unit;
                     try {
                         //getMovechoices() can include convoy movements...
-                        unit = { id: u.id, type: u.type, terrID: u.terrID, countryID: u.countryID, moveChoices: u.getMovableTerritories().map(c => c.id) };
+                        unit = { ID: u.id, type: u.type, terrID: u.terrID, countryID: u.countryID, moveChoices: u.getMovableTerritories().map(c => c.id) };
                     } catch (e){
-                        unit = { id: u.id, type: u.type, terrID: u.terrID, countryID: u.countryID, moveChoices: u.getMovableTerritories().map(c =>c.id) };
+                        unit = { ID: u.id, type: u.type, terrID: u.terrID, countryID: u.countryID, moveChoices: u.getMovableTerritories().map(c =>c.id) };
                     }
                     units.push(unit);
                 }
@@ -157,11 +157,11 @@ module.exports = {
         });
     },
 
-    getCoastalParentId(page, id) {
+    getCoastalParentId(page, ID) {
         return new Promise(async resolve => {
-            resolve(await page.evaluate((id) => {
-                return window.Territories._object[id].coastParent.id;
-            }, id));
+            resolve(await page.evaluate((ID) => {
+                return window.Territories._object[ID].coastParent.id;
+            }, ID));
         });
     },
 

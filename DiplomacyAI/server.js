@@ -173,8 +173,8 @@ function login(username, password) {
         agent.get(`${url}index.php`).then(async function (r) {
             site = r.text;
             printUser();
-            let games = await state.gameFinder();
-            game.gameCheck(games);
+            let games = await state.gameCheck(game.browser);
+            game.game = games;
             console.log('Current active games: ', games);
         });
     });
