@@ -116,8 +116,8 @@ module.exports = {
 
             let gam = (await database.getGames(username)).map(e => e.gameID);
 
-            gam.filter(e => !games.includes(e)).forEach(e => {
-                database.removeGame(e);
+            gam.filter(e => !games.map(e => e.bigId).includes(String(e))).forEach(e => {
+                database.removeGame(e, username);
             });
 
             const total = games.length;

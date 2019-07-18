@@ -192,7 +192,7 @@ function printUser() {
     console.log(user);
 }
 
-function loadConfig() {
+async function loadConfig() {
     config = require('./config.json');
     url = config.Site;
 
@@ -200,6 +200,6 @@ function loadConfig() {
 
     state.init(init);
     init.state = state;
-    game.init(init);
+    await game.init(init);
     login();
 }

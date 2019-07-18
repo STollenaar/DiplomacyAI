@@ -108,7 +108,7 @@ module.exports = {
     },
 
     calculateTargetRisk(targetID, units, countryID) {
-        return units.filter(u => u.moveChoices.includes(targetID) && u.countryID !== countryID).length;
+        return units.filter(u => u.moveChoices.includes(targetID) && u.countryID !== String(countryID)).length;
     },
 
     //gets the surrounding able to help friendly units with calculated risk
@@ -116,7 +116,7 @@ module.exports = {
         surTerr.forEach(terr => {
             //getting the risk number for supporting
             terr.risk = units.filter(u => u.ID !== targetUnit.unitID && u.moveChoices.includes(String(terr.fromId))
-                && u.countryID !== countryID).length;
+                && u.countryID !== String(countryID)).length;
         });
         surTerr = surTerr.filter(t => units.find(u => u.terrID === String(t.fromId)).moveChoices.includes(toId));
         surTerr = surTerr.sort((a, b) => a.risk - b.risk);

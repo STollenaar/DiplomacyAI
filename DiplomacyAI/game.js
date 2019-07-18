@@ -38,7 +38,7 @@ module.exports = {
     },
 
     startTraining(amountTimes, interval, opponents) {
-        training = { current: 0, maxAmount: amountTimes, interval: interval, opponents: opponents };
+        training = { current: 0, maxAmount: parseInt(amountTimes), interval: interval, opponents: opponents };
         this.checkTraining();
     },
 
@@ -50,7 +50,7 @@ module.exports = {
         training = undefined;
     },
 
-    checkTraining(gameID) {
+    checkTraining(gameID = 0) {
         database.removeEpisodes(gameID);
         if (training !== undefined) {
             training.current++;

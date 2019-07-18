@@ -93,7 +93,6 @@ module.exports = {
             };
 
             let targetRisk = util.calculateTargetRisk(String(current.ID), units, countryID);
-            targetStatus !== undefined ? targetRisk++ : targetRisk += 0;
 
             if (config.attackRisk.P[targetRisk] === undefined || config.attackRisk.P[targetRisk] === null) {
                 util.initLearning("attackRisk", targetRisk, normalActions, config);
@@ -121,10 +120,7 @@ module.exports = {
     supportMove(page, current, supplies, units, targetStatus, targetRisk, countryID, gameId, phase) {
         return new Promise(async (resolve) => {
 
-            if (config.attackRisk.P[targetRisk] === undefined || config.attackRisk.P[targetRisk] === null) {
-                util.initLearning("neededFriendly", targetRisk, new Array(55), config);
-                await database.updateConfig(fs, config);
-            }
+
             let maxSurroundingTerr = (await database.getBorders(gameId, current.ID)).length;
             let surrFriendly;
             if (targetStatus !== undefined) {
@@ -132,15 +128,23 @@ module.exports = {
             } else {
                 surrFriendly = util.getSurrFriendly(-1, supplies, units, String(current.ID), countryID);
             }
+
+            if (config.neededFriendly.P[Math.min(targetRisk, maxSurroundingTerr)] === undefined || config.neededFriendly.P[Math.min(targetRisk, maxSurroundingTerr)] === null) {
+                util.initLearning("neededFriendly", targetRisk, new Array(55), config);
+                await database.updateConfig(fs, config);
+            }
+
             let neededFriendlies = Math.max(surrFriendly.length, module.exports.selectActionFromPolicy("neededFriendly", targetRisk, maxSurroundingTerr));
 
             //removing not needed and high risked friendlies;
             surrFriendly.length > neededFriendlies ? surrFriendly = surrFriendly.splice(0, neededFriendlies) : surrFriendly = surrFriendly;
+
+
             database.generateEpisode(gameId, phase, "neededFriendly", targetRisk, neededFriendlies, config["neededFriendly"].P.length, 0, "Supporting", current.ID, countryID);
 
             //quick init if not done
             surrFriendly.forEach(async e => {
-                if (config.attackRisk.P[e.risk] === undefined || config.attackRisk.P[e.risk] === null) {
+                if (config.supportMove.P[e.risk] === undefined || config.supportMove.P[e.risk] === null) {
                     util.initLearning("supportMove", e.risk, supportActions, config);
                     await database.updateConfig(fs, config);
                 }
@@ -162,11 +166,6 @@ module.exports = {
             database.generateEpisode(gameId, phase, "supportMove", move.risk, 0, 2, move.unitID, "Move", current.ID, countryID);
             surrFriendly = surrFriendly.filter(s => s.index !== move.index);
 
-            if (surrFriendly.length === 0) {
-                resolve(supplies);
-                return;
-            }
-
             //having the other support moves
             for (const value of surrFriendly) {
                 await page.select(`div#${value.divId} select[ordertype="type"]`, 'Support move');
@@ -185,8 +184,7 @@ module.exports = {
             let name = files.sort((a, b) => parseInt(b.split('t')[1].split('.')[0]) - parseInt(a.split('t')[1].split('.')[0]))[0];
             name = parseInt(name.split('t')[1].split('.')[0]);
             name++;
-            let json = JSON.stringify(dataSet);
-            fs.writeFile(`./datasets/Variant${name}.json`, json, 'utf8');
+            fs.writeFile(`./datasets/Variant${name}.json`, JSON.stringify(dataSet, null, 4), 'utf8');
         });
 
     },

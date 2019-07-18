@@ -25,10 +25,11 @@ module.exports = {
         });
     },
 
-    removeGame(gameID) {
+    //do some safer removing!!
+    removeGame(gameID, username) {
         db.serialize(() => {
             db.run(`DELETE FROM episodes WHERE gameID=${gameID};`);
-            db.run(`DELETE FROM games WHERE gameID=${gameID};`);
+            db.run(`DELETE FROM games WHERE gameID=${gameID} AND username='${username}';`);
             db.run(`DELETE FROM borders WHERE gameID=${gameID};`);
             db.run(`DELETE FROM territories WHERE gameID=${gameID};`);
         });
@@ -106,7 +107,7 @@ module.exports = {
         });
     },
 
-    removeEpisodes(gameID, countryID) {
+    removeEpisodes(gameID, countryID = 0) {
         db.serialize(() => {
             db.run(`DELETE FROM episodes WHERE gameID=${gameID} AND countryID=${countryID};`);
         });
